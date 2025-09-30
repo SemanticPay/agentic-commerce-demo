@@ -4,13 +4,16 @@ from base_types import (
     CheckoutSessionResponse,
     Cart,
     CheckoutSession,
+    DelegatePaymentRequest,
+    DelegatePaymentResponse,
     SearchRequest,
 )
 from utils import (
     calculate_cart_final_price,
     get_unique_checkout_session_id,
     get_items_by_filters,
-    get_items_by_ids
+    get_items_by_ids,
+    handle_payment,
 )
 
 app = Flask(__name__)
@@ -56,6 +59,25 @@ def search():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route('/api/delegate_payment', methods=['POST'])
+def delegate_payment():
+    """
+    Delegate payment endpoint (stub implementation).
+    Expects a JSON body with payment details.
+    """
+    data = request.json
+    if data is None:
+        return jsonify({"error": "Invalid JSON body"}), 400
+    req = DelegatePaymentRequest(**data)
+
+    try:
+        handle_payment(req.payment_method, req.allowance, req.billing_address)
+        resp = DelegatePaymentResponse(success=True)
+        return jsonify(resp.model_dump())
+    
+    except Exception as e:
+        resp = DelegatePaymentResponse(success=False, message=str(e))
+        return jsonify(resp.model_dump()), 500 
 
 
 if __name__ == '__main__':

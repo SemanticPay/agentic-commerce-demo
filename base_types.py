@@ -6,25 +6,49 @@ class Item(BaseModel):
     description: str
     price: float
 
+class Address(BaseModel):
+    line_one: str
+    line_two: str | None = None
+    city: str
+    state: str
+    country: str
+    postal_code: str
+
 class Cart(BaseModel):
     items: list[Item]
     final_price: float
 
-# Buyer includes and distilles "Address" and "Buyer" information from the ACP spec
-# https://github.com/agentic-commerce-protocol/agentic-commerce-protocol/blob/main/spec/openapi/openapi.agentic_checkout.yaml
-class Buyer(BaseModel):
+class PaymentMethod(BaseModel):
+    type: str
+    number: str
+    exp_month: str
+    exp_year: str
     name: str
+    cvc: str
+
+class Allowance(BaseModel):
+    amount: float
+    currency: str
+    checkout_session_id: str
+    merchant_id: str
+
+class BillingAddress(Address):
+    pass
+    
+class FullfillmentAddress(Address):
+    pass
+
+class Buyer(BaseModel):
+    first_name: str
+    last_name: str
     email: str
-    address: str
     phone_number: str
-    city: str
-    country: str
-    postal_code: str
 
 class CheckoutSession(BaseModel):
     id: str
     cart: Cart
     buyer: Buyer
+    fullfillment_address: FullfillmentAddress
 
 ### /search endpoint
 
@@ -46,3 +70,11 @@ class CheckoutSessionResponse(BaseModel):
 
 ### /delegate_payment endpoint
 
+class DelegatePaymentRequest(BaseModel):
+    payment_method: PaymentMethod
+    allowance: Allowance
+    billing_address: BillingAddress
+
+class DelegatePaymentResponse(BaseModel):
+    success: bool
+    message: str = ""
