@@ -1,23 +1,46 @@
 from flask import Flask, request, jsonify
-import re
+from base_types import (
+    CheckoutSessionRequest,
+    CheckoutSessionResponse,
+    Cart,
+    CheckoutSession,
+    SearchRequest,
+)
+from utils import (
+    calculate_cart_final_price,
+    get_unique_checkout_session_id,
+    get_items_by_filters,
+    get_items_by_ids
+)
 
 app = Flask(__name__)
 
-# Global items data (10 items as requested)
-ITEMS = [
-    {"id": 1, "title": "Python Programming Guide", "description": "Learn Python programming from basics to advanced concepts"},
-    {"id": 2, "title": "Web Development Tutorial", "description": "Complete guide to building modern web applications"},
-    {"id": 3, "title": "Machine Learning Basics", "description": "Introduction to machine learning algorithms and techniques"},
-    {"id": 4, "title": "Data Science Handbook", "description": "Essential tools and techniques for data analysis"},
-    {"id": 5, "title": "JavaScript Fundamentals", "description": "Master JavaScript programming language"},
-    {"id": 6, "title": "Database Design Principles", "description": "Learn how to design efficient database schemas"},
-    {"id": 7, "title": "API Development Guide", "description": "Build RESTful APIs with best practices"},
-    {"id": 8, "title": "Mobile App Development", "description": "Create mobile applications for iOS and Android"},
-    {"id": 9, "title": "Cloud Computing Overview", "description": "Understanding cloud platforms and services"},
-    {"id": 10, "title": "Cybersecurity Essentials", "description": "Protect your applications from security threats"}
-]
 
-@app.route('/api/search', methods=['GET', 'POST'])
+@app.route('/api/checkout_sessions', methods=['POST'])
+def checkout_sessions():
+    """
+    Checkout session endpoint that processes a cart and buyer information.
+    Expects a JSON body with 'cart' and 'buyer' fields.
+    """
+    try:
+        data = request.json
+        if data is None:
+            return jsonify({"error": "Invalid JSON body"}), 400
+        req = CheckoutSessionRequest(**data)
+        
+        items = get_items_by_ids(req.item_ids)
+        cart = Cart(items=items, final_price=calculate_cart_final_price(items, req.buyer))
+        # TODO: create DB entries for these and get the ID for free
+        checkout_session = CheckoutSession(id=get_unique_checkout_session_id(), cart=cart, buyer=req.buyer)
+
+        resp = CheckoutSessionResponse(checkout_session=checkout_session)
+        # Ensure JSON-serializable output
+        return jsonify(resp.model_dump())
+    
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/search', methods=['GET'])
 def search():
     """
     Search endpoint that filters items based on keywords in their title.
@@ -25,34 +48,11 @@ def search():
     """
     try:
         # Get parameters from request
-        if request.method == 'GET':
-            query = request.args.get('query', '')
-            keywords = request.args.get('keywords', '')
-        else:  # POST
-            data = request.get_json() or {}
-            query = data.get('query', '')
-            keywords = data.get('keywords', '')
-        
-        # Combine query and keywords for search
-        search_terms = f"{query} {keywords}".strip().lower()
-        
-        if not search_terms:
-            return jsonify({"items": []})
-        
-        # Filter items where title contains any of the search terms
-        search_words = search_terms.split()
-        filtered_items = []
-        
-        for item in ITEMS:
-            title_lower = item["title"].lower()
-            # Check if any search word is in the title
-            if any(word in title_lower for word in search_words):
-                res = item
-                res["checkout_url"] = f"https://checkout.stripe.com/c/pay/{item['id']}"
-                filtered_items.append(res)
-        
-        return jsonify({"items": filtered_items})
-    
+        req = SearchRequest(**request.args)
+        items = get_items_by_filters(req.query, req.keywords)
+        # Convert Pydantic models to dicts for JSON response
+        return jsonify([item.model_dump() for item in items])
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
