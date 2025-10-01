@@ -1,23 +1,23 @@
 import uuid
-from base_types import Item, Buyer
+from base_types import FullfillmentAddress, Item, Buyer
 from items import ITEMS
 
 
-def calculate_cart_final_price(items: list[Item], buyer: Buyer) -> float:
+def calculate_cart_final_price(items: list[Item], fullfillment_address: FullfillmentAddress) -> float:
     """
     Calculate the final price of the cart.
     For simplicity, this example just sums up item prices.
     """
-    shipping_cost = calculate_cart_shipping_price(items, buyer)
+    shipping_cost = calculate_cart_shipping_price(items, fullfillment_address)
     total = sum(item.price for item in items) + shipping_cost
     return total
 
-def calculate_cart_shipping_price(items: list[Item], buyer: Buyer) -> float:
+def calculate_cart_shipping_price(items: list[Item], fullfillment_address: FullfillmentAddress) -> float:
     """
     Calculate shipping price based on buyer's location.
     For simplicity, this example returns a flat rate.
     """
-    if buyer.country.lower() == "usa":
+    if fullfillment_address.country.lower() == "usa":
         return 5.00
     else:
         return 15.00  # Higher shipping fee for international orders
@@ -54,6 +54,6 @@ def handle_payment(payment_method, allowance, billing_address):
     """
     print(f"Delegating payment of {allowance.amount} {allowance.currency} for session {allowance.checkout_session_id}")
     print(f"Using payment method: {payment_method.type}, card ending in {payment_method.number[-4:]}")
-    print(f"Billing address: {billing_address.street}, {billing_address.city}, {billing_address.country}")
+    print(f"Billing address: {billing_address.line_one}, {billing_address.city}, {billing_address.country}")
     # Simulate successful payment delegation
     return True

@@ -64,6 +64,7 @@ class SearchResponse(BaseModel):
 class CheckoutSessionRequest(BaseModel):
     item_ids: list[str]
     buyer: Buyer
+    fullfillment_address: FullfillmentAddress
 
 class CheckoutSessionResponse(BaseModel):
     checkout_session: CheckoutSession
