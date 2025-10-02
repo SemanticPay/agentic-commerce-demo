@@ -99,6 +99,7 @@ async def async_main(question):
                     )
 
         print(f"\033[92m{full_response}\033[0m")
+        return full_response
     finally:
         # Properly close the MCP connection to avoid async context issues
         await semanticpay_mcp.close()
