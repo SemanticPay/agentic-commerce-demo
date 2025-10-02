@@ -14,8 +14,8 @@ from google.genai import types
 # Load environment variables from .env file
 load_dotenv()
 
-async def async_main(question):
-    """Executes one turn of the travel_concierge agents with a query that would trigger the MCP tool."""
+async def async_main(question, chat_history=None, session_id=None):
+    """Executes one turn of the shopping agent with a query and full chat context."""
     semanticpay_mcp = McpToolset(
         connection_params=StreamableHTTPConnectionParams(
             url="http://localhost:8000/mcp",
@@ -34,7 +34,7 @@ async def async_main(question):
             # before_agent_callback=_load_precreated_itinerary,
         )
 
-        user_id = "homayoon"
+        user_id = session_id or "homayoon"
         app_name = "shopping-agent"
         session_service = InMemorySessionService()
         artifacts_service = InMemoryArtifactService()
@@ -42,8 +42,19 @@ async def async_main(question):
             state={}, app_name=app_name, user_id=user_id
         )
 
-        query = question
-        print("[user]: ", query)
+        # Build full conversation context from chat history
+        full_context = ""
+        if chat_history:
+            for msg in chat_history:
+                role_label = "user" if msg["role"] == "user" else "agent"
+                full_context += f"[{role_label}]: {msg['content']}\n"
+        
+        # Add current question
+        full_context += f"[user]: {question}"
+        
+        query = full_context
+        print("[user]: ", question)
+        print("[full context being sent]: ", query)
         content = types.Content(role="user", parts=[types.Part(text=query)])
 
         runner = Runner(

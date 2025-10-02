@@ -92,3 +92,9 @@ The migration from Flask to FastMCP includes:
 - `POST /api/checkout_sessions` → `create_checkout_session(item_ids, buyer)`
 - `GET /api/search` → `search_items(query, keywords)`
 - `POST /api/delegate_payment` → `delegate_payment(request)`
+
+## Run chat UI
+
+```
+python -m http.server 8080 --directory agent/ui
+```
