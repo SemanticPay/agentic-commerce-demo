@@ -1,4 +1,5 @@
 from fastmcp import FastMCP
+from datetime import datetime
 from base_types import (
     CheckoutSessionRequest,
     CheckoutSessionResponse,
@@ -10,6 +11,7 @@ from base_types import (
     SearchRequest,
     Item,
     Buyer,
+    Order,
 )
 from utils import (
     calculate_cart_final_price,
@@ -21,6 +23,9 @@ from utils import (
 
 # Initialize FastMCP server
 mcp = FastMCP("SemanticPay Shopping Server")
+
+# In-memory storage for orders
+orders_storage: dict[str, Order] = {}
 
 
 @mcp.tool()
@@ -39,8 +44,23 @@ def create_checkout_session(item_ids: list[str], buyer: Buyer, fullfillment_addr
     
     items = get_items_by_ids(req.item_ids)
     cart = Cart(items=items, final_price=calculate_cart_final_price(items, req.fullfillment_address))
-    # TODO: create DB entries for these and get the ID for free
-    checkout_session = CheckoutSession(id=get_unique_checkout_session_id(), cart=cart, fullfillment_address=req.fullfillment_address, buyer=req.buyer)
+    checkout_session_id = get_unique_checkout_session_id()
+    checkout_session = CheckoutSession(id=checkout_session_id, cart=cart, fullfillment_address=req.fullfillment_address, buyer=req.buyer)
+
+    # Create Order object with status "waiting_for_payment"
+    current_time = datetime.now().isoformat()
+    order = Order(
+        checkout_session_id=checkout_session_id,
+        items=items,
+        buyer=req.buyer,
+        fullfillment_address=req.fullfillment_address,
+        status="waiting_for_payment",
+        created_at=current_time,
+        updated_at=current_time
+    )
+    
+    # Store the order in memory
+    orders_storage[checkout_session_id] = order
 
     resp = CheckoutSessionResponse(checkout_session=checkout_session)
     return resp
@@ -76,6 +96,15 @@ def delegate_payment(request: DelegatePaymentRequest) -> DelegatePaymentResponse
     """
     try:
         handle_payment(request.payment_method, request.allowance, request.billing_address)
+        
+        # If payment is successful, update the order status to "done"
+        checkout_session_id = request.allowance.checkout_session_id
+        if checkout_session_id in orders_storage:
+            order = orders_storage[checkout_session_id]
+            order.status = "done"
+            order.updated_at = datetime.now().isoformat()
+            orders_storage[checkout_session_id] = order
+        
         resp = DelegatePaymentResponse(success=True)
         return resp
     

@@ -1,3 +1,6 @@
 .claude/
 claude_desktop_config.json
 CLAUDE.md
+venv/
+.cursor/
+__pycache__/

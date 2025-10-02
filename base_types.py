@@ -79,3 +79,15 @@ class DelegatePaymentRequest(BaseModel):
 class DelegatePaymentResponse(BaseModel):
     success: bool
     message: str = ""
+
+
+class Order(BaseModel):
+    checkout_session_id: str
+    items: list[Item]
+    buyer: Buyer
+    fullfillment_address: FullfillmentAddress
+    status: str  # "waiting_for_payment" or "done"
+    created_at: str
+    updated_at: str
+
+
