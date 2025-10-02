@@ -1,5 +1,6 @@
 from fastmcp import FastMCP
 from datetime import datetime
+import logging
 from base_types import (
     CheckoutSessionRequest,
     CheckoutSessionResponse,
@@ -21,12 +22,22 @@ from utils import (
     handle_payment,
 )
 
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('mcp_server.log', mode='a'),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
+
 # Initialize FastMCP server
 mcp = FastMCP("SemanticPay Shopping Server")
 
 # In-memory storage for orders
 orders_storage: dict[str, Order] = {}
-
 
 @mcp.tool()
 def create_checkout_session(item_ids: list[str], buyer: Buyer, fullfillment_address: FullfillmentAddress) -> CheckoutSessionResponse:
@@ -63,6 +74,11 @@ def create_checkout_session(item_ids: list[str], buyer: Buyer, fullfillment_addr
     orders_storage[checkout_session_id] = order
 
     resp = CheckoutSessionResponse(checkout_session=checkout_session)
+
+    logger.info("=" * 80)
+    logger.info(f"✅ CREATE CHECKOUT SESSION: {resp.dict()}, request: {req.dict()}")
+    logger.info("=" * 80)
+
     return resp
 
 
@@ -80,6 +96,11 @@ def search_items(query: str = "", keywords: str = "") -> list[Item]:
     """
     req = SearchRequest(query=query, keywords=keywords)
     items = get_items_by_filters(req.query, req.keywords)
+
+    logger.info("=" * 80)
+    logger.info(f"✅ SEARCH ITEMS: {items}, request: {req.dict()}")
+    logger.info("=" * 80)
+
     return items
 
 
@@ -106,10 +127,20 @@ def delegate_payment(request: DelegatePaymentRequest) -> DelegatePaymentResponse
             orders_storage[checkout_session_id] = order
         
         resp = DelegatePaymentResponse(success=True)
+
+        logger.info("=" * 80)
+        logger.info(f"✅ DELEGATE PAYMENT SUCCESS: {resp.dict()}, request: {request.dict()}")
+        logger.info("=" * 80)
+
         return resp
     
     except Exception as e:
         resp = DelegatePaymentResponse(success=False, message=str(e))
+
+        logger.info("=" * 80)
+        logger.info(f"❌ DELEGATE PAYMENT ERROR: {resp.dict()}, request: {request.dict()}")
+        logger.info("=" * 80)
+
         return resp
 
 
@@ -120,4 +151,17 @@ if __name__ == '__main__':
     print("  - search_items: Search for items by query and keywords")
     print("  - delegate_payment: Process payment delegation")
     print("Running as HTTP server on http://localhost:8000")
+    print("📝 Logs will be saved to: mcp_server.log")
+
+    logger.info("=" * 80)
+    logger.info("🚀 SEMANTICPAY MCP SERVER STARTED")
+    logger.info("📋 Available Endpoints:")
+    logger.info("   • create_checkout_session - Create checkout sessions")
+    logger.info("   • search_items - Search for items")
+    logger.info("   • delegate_payment - Process payments")
+    logger.info("🌐 Server running on: http://localhost:8000")
+    logger.info("📁 Log file: mcp_server.log")
+    logger.info("=" * 80)
+
+
     mcp.run(transport="http", host="0.0.0.0", port=8000)

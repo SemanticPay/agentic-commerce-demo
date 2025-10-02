@@ -1,0 +1,41 @@
+2025-10-02 16:20:09,613 - INFO - StreamableHTTP session manager started
+2025-10-02 16:20:34,186 - INFO - Created new transport with session ID: 57f97e959e4744698b39093e4bec0bb7
+2025-10-02 16:20:37,718 - INFO - Created new transport with session ID: 5061625bfdbb47068f0df8248992490f
+2025-10-02 16:20:41,578 - INFO - Created new transport with session ID: 27009f03b0e842dea430d2fc2dbead99
+2025-10-02 16:22:17,542 - INFO - StreamableHTTP session manager shutting down
+2025-10-02 16:22:29,354 - INFO - StreamableHTTP session manager started
+2025-10-02 16:23:22,447 - INFO - Created new transport with session ID: d7f356ebf70f4688a064339dd316a9eb
+2025-10-02 16:24:41,908 - INFO - StreamableHTTP session manager started
+2025-10-02 16:24:41,909 - INFO - StreamableHTTP session manager shutting down
+2025-10-02 16:24:49,521 - INFO - Created new transport with session ID: 340aaffc0af447f9a53deb2369dfb1c6
+2025-10-02 16:25:00,272 - INFO - StreamableHTTP session manager started
+2025-10-02 16:25:00,273 - INFO - StreamableHTTP session manager shutting down
+2025-10-02 16:25:07,645 - INFO - StreamableHTTP session manager started
+2025-10-02 16:25:17,705 - INFO - Created new transport with session ID: 23d384e59c1e483591dfd99c6e3225c8
+2025-10-02 16:25:52,803 - INFO - Created new transport with session ID: 95da2b0a47104d76b08ff2d4f5513639
+2025-10-02 16:26:03,978 - INFO - Created new transport with session ID: 4902b71df4684fcc99517eea6a17d203
+2025-10-02 16:26:13,856 - INFO - Created new transport with session ID: 4e4f4a2732094db7939fa76962fdf52c
+2025-10-02 16:26:20,072 - INFO - Created new transport with session ID: 25ebd05dbc3b4302bc28ea1e916a636d
+2025-10-02 16:26:32,636 - INFO - Created new transport with session ID: a6cc663fea394c74aba4d8a75d67a92b
+2025-10-02 16:26:46,743 - INFO - Created new transport with session ID: c45c7f117dd44457a4eebab7ed025aae
+2025-10-02 16:26:57,629 - INFO - Created new transport with session ID: dac0abb0164443aa8362513f4e986d3c
+2025-10-02 16:28:00,769 - INFO - Created new transport with session ID: ecfa881688b7411ebc96a8f3c2034336
+2025-10-02 16:28:07,551 - INFO - Created new transport with session ID: 4c73a2cb90ab44f9a44b3a2a0745d2df
+2025-10-02 16:28:12,636 - INFO - Created new transport with session ID: a4b6c3ce95f14fa584a429219298b3e9
+2025-10-02 16:28:24,157 - INFO - Created new transport with session ID: 3b44e5fce96a42a8bbeba53e0ad18ef0
+2025-10-02 16:28:38,704 - INFO - Created new transport with session ID: 73c4a2063d9940259adcae45ca436771
+2025-10-02 16:30:50,829 - INFO - Created new transport with session ID: cca95ea7c6bb44068eb88018adb0c7fe
+2025-10-02 16:30:56,041 - INFO - Created new transport with session ID: c49f55dc92734b59b38bc27132b3edb8
+2025-10-02 16:31:06,805 - INFO - Created new transport with session ID: 086b86347bc44e86960a76f61e270289
+2025-10-02 16:31:17,783 - INFO - Created new transport with session ID: e4dc855ef310455590177174c0febad1
+2025-10-02 16:32:47,391 - INFO - 🚀 SEMANTICPAY MCP SERVER STARTED
+2025-10-02 16:32:47,392 - INFO - ================================================================================
+2025-10-02 16:32:47,392 - INFO - 📋 Available Endpoints:
+2025-10-02 16:32:47,392 - INFO -    • create_checkout_session - Create checkout sessions
+2025-10-02 16:32:47,392 - INFO -    • search_items - Search for items
+2025-10-02 16:32:47,392 - INFO -    • delegate_payment - Process payments
+2025-10-02 16:32:47,392 - INFO - 🌐 Server running on: http://localhost:8000
+2025-10-02 16:32:47,392 - INFO - 📁 Log file: mcp_server.log
+2025-10-02 16:32:47,392 - INFO - ================================================================================
+2025-10-02 16:32:47,413 - INFO - StreamableHTTP session manager started
+2025-10-02 16:32:58,593 - INFO - Created new transport with session ID: f600dc28d14a49d6b7c85b29344e90b8
