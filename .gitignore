@@ -4,3 +4,4 @@ CLAUDE.md
 venv/
 .cursor/
 __pycache__/
+.env
