@@ -16,7 +16,7 @@ load_dotenv()
 app = FastAPI(
     title="Shopping Agent API",
     description="HTTP API for the AI Shopping Assistant Agent",
-    version="1.0.0"
+    version="1.0.0",
 )
 
 # Add CORS middleware
@@ -34,14 +34,16 @@ class ChatMessage(BaseModel):
     content: str
     timestamp: Optional[str] = None
 
+
 # In-memory session storage (in production, use a proper database)
 sessions: Dict[str, List[ChatMessage]] = {}
+
 
 class QueryRequest(BaseModel):
     question: str
     session_id: Optional[str] = None
     chat_history: Optional[List[ChatMessage]] = []
-    
+
     class Config:
         json_schema_extra = {
             "example": {
@@ -49,8 +51,8 @@ class QueryRequest(BaseModel):
                 "session_id": "session_123",
                 "chat_history": [
                     {"role": "user", "content": "Hello"},
-                    {"role": "agent", "content": "Hi! How can I help you today?"}
-                ]
+                    {"role": "agent", "content": "Hi! How can I help you today?"},
+                ],
             }
         }
 
@@ -72,8 +74,8 @@ async def root():
         "endpoints": {
             "POST /query": "Send a question to the shopping agent with full chat context",
             "GET /session/{session_id}": "Get chat history for a specific session",
-            "GET /health": "Health check endpoint"
-        }
+            "GET /health": "Health check endpoint",
+        },
     }
 
 
@@ -87,104 +89,88 @@ async def health_check():
 async def query_agent(request: QueryRequest):
     """
     Send a query to the shopping agent and get a response.
-    
+
     Args:
         request: QueryRequest containing the user's question, optional session_id, and chat_history
-        
+
     Returns:
         QueryResponse with the agent's answer and updated chat history
     """
     try:
         # Generate session ID if not provided
         session_id = request.session_id or str(uuid.uuid4())
-        
+
         # Get existing chat history or use provided history
         if session_id in sessions:
             chat_history = sessions[session_id]
         else:
             chat_history = request.chat_history or []
             sessions[session_id] = []
-        
+
         # Convert chat_history to dict format if it's from Pydantic models
         history_dicts = []
         for msg in chat_history:
             if isinstance(msg, ChatMessage):
-                history_dicts.append({
-                    "role": msg.role,
-                    "content": msg.content,
-                    "timestamp": msg.timestamp
-                })
+                history_dicts.append(
+                    {
+                        "role": msg.role,
+                        "content": msg.content,
+                        "timestamp": msg.timestamp,
+                    }
+                )
             else:
                 history_dicts.append(msg)
-        
+
         # Call the agent with full context
         response = await async_main(
-            question=request.question,
-            chat_history=history_dicts,
-            session_id=session_id
+            question=request.question, chat_history=history_dicts, session_id=session_id
         )
-        
+
         # Update session with new messages
         current_time = datetime.now().isoformat()
-        
+
         # Add user message
         user_message = ChatMessage(
-            role="user",
-            content=request.question,
-            timestamp=current_time
+            role="user", content=request.question, timestamp=current_time
         )
         sessions[session_id].append(user_message)
-        
+
         # Add agent response
         agent_message = ChatMessage(
             role="agent",
             content=response if response else "No response generated",
-            timestamp=current_time
+            timestamp=current_time,
         )
         sessions[session_id].append(agent_message)
-        
+
         return QueryResponse(
             question=request.question,
             response=response if response else "No response generated",
             status="success",
             session_id=session_id,
-            updated_chat_history=sessions[session_id]
+            updated_chat_history=sessions[session_id],
         )
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Error processing query: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Error processing query: {str(e)}")
 
 
 @app.get("/session/{session_id}")
 async def get_session_history(session_id: str):
     """
     Get the chat history for a specific session.
-    
+
     Args:
         session_id: The session ID to retrieve history for
-        
+
     Returns:
         Chat history for the session
     """
     if session_id not in sessions:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Session {session_id} not found"
-        )
-    
-    return {
-        "session_id": session_id,
-        "chat_history": sessions[session_id]
-    }
+        raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
+
+    return {"session_id": session_id, "chat_history": sessions[session_id]}
 
 
 if __name__ == "__main__":
     # Run the server
-    uvicorn.run(
-        "main:app",
-        host="0.0.0.0",
-        port=8001,
-        reload=True
-    )
+    uvicorn.run("main:app", host="0.0.0.0", port=8001, reload=True)

@@ -29,23 +29,35 @@ orders_storage: dict[str, Order] = {}
 
 
 @mcp.tool()
-def create_checkout_session(item_ids: list[str], buyer: Buyer, fullfillment_address: FullfillmentAddress) -> CheckoutSessionResponse:
+def create_checkout_session(
+    item_ids: list[str], buyer: Buyer, fullfillment_address: FullfillmentAddress
+) -> CheckoutSessionResponse:
     """
     Create a checkout session that processes a cart and buyer information.
-    
+
     Args:
         item_ids: List of item IDs to include in the cart
         buyer: Buyer information including name, email, phone, and country
-        
+
     Returns:
         CheckoutSessionResponse containing the checkout session with cart and buyer details
     """
-    req = CheckoutSessionRequest(item_ids=item_ids, buyer=buyer, fullfillment_address=fullfillment_address)
-    
+    req = CheckoutSessionRequest(
+        item_ids=item_ids, buyer=buyer, fullfillment_address=fullfillment_address
+    )
+
     items = get_items_by_ids(req.item_ids)
-    cart = Cart(items=items, final_price=calculate_cart_final_price(items, req.fullfillment_address))
+    cart = Cart(
+        items=items,
+        final_price=calculate_cart_final_price(items, req.fullfillment_address),
+    )
     checkout_session_id = get_unique_checkout_session_id()
-    checkout_session = CheckoutSession(id=checkout_session_id, cart=cart, fullfillment_address=req.fullfillment_address, buyer=req.buyer)
+    checkout_session = CheckoutSession(
+        id=checkout_session_id,
+        cart=cart,
+        fullfillment_address=req.fullfillment_address,
+        buyer=req.buyer,
+    )
 
     # Create Order object with status "waiting_for_payment"
     current_time = datetime.now().isoformat()
@@ -56,9 +68,9 @@ def create_checkout_session(item_ids: list[str], buyer: Buyer, fullfillment_addr
         fullfillment_address=req.fullfillment_address,
         status="waiting_for_payment",
         created_at=current_time,
-        updated_at=current_time
+        updated_at=current_time,
     )
-    
+
     # Store the order in memory
     orders_storage[checkout_session_id] = order
 
@@ -70,11 +82,11 @@ def create_checkout_session(item_ids: list[str], buyer: Buyer, fullfillment_addr
 def search_items(query: str = "", keywords: str = "") -> list[Item]:
     """
     Search for items based on query and keywords in their title.
-    
+
     Args:
         query: Search query string (optional)
         keywords: Additional keywords to search for (optional)
-        
+
     Returns:
         List of items matching the search criteria
     """
@@ -87,16 +99,18 @@ def search_items(query: str = "", keywords: str = "") -> list[Item]:
 def delegate_payment(request: DelegatePaymentRequest) -> DelegatePaymentResponse:
     """
     Delegate payment processing for a checkout session.
-    
+
     Args:
         request: DelegatePaymentRequest containing payment_method, allowance, and billing_address
-        
+
     Returns:
         DelegatePaymentResponse indicating success or failure with optional message
     """
     try:
-        handle_payment(request.payment_method, request.allowance, request.billing_address)
-        
+        handle_payment(
+            request.payment_method, request.allowance, request.billing_address
+        )
+
         # If payment is successful, update the order status to "done"
         checkout_session_id = request.allowance.checkout_session_id
         if checkout_session_id in orders_storage:
@@ -104,16 +118,16 @@ def delegate_payment(request: DelegatePaymentRequest) -> DelegatePaymentResponse
             order.status = "done"
             order.updated_at = datetime.now().isoformat()
             orders_storage[checkout_session_id] = order
-        
+
         resp = DelegatePaymentResponse(success=True)
         return resp
-    
+
     except Exception as e:
         resp = DelegatePaymentResponse(success=False, message=str(e))
         return resp
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     print("Starting SemanticPay MCP Server...")
     print("Available tools:")
     print("  - create_checkout_session: Create a new checkout session")

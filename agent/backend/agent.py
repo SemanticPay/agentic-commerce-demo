@@ -14,6 +14,7 @@ from google.genai import types
 # Load environment variables from .env file
 load_dotenv()
 
+
 async def async_main(question, chat_history=None, session_id=None):
     """Executes one turn of the shopping agent with a query and full chat context."""
     semanticpay_mcp = McpToolset(
@@ -30,7 +31,7 @@ async def async_main(question, chat_history=None, session_id=None):
             instruction=ROOT_AGENT_INSTR,
             tools=[
                 semanticpay_mcp,
-            ]
+            ],
             # before_agent_callback=_load_precreated_itinerary,
         )
 
@@ -48,10 +49,10 @@ async def async_main(question, chat_history=None, session_id=None):
             for msg in chat_history:
                 role_label = "user" if msg["role"] == "user" else "agent"
                 full_context += f"[{role_label}]: {msg['content']}\n"
-        
+
         # Add current question
         full_context += f"[user]: {question}"
-        
+
         query = full_context
         print("[user]: ", question)
         print("[full context being sent]: ", query)
@@ -116,12 +117,5 @@ async def async_main(question, chat_history=None, session_id=None):
         await semanticpay_mcp.close()
 
 
-
 if __name__ == "__main__":
-    asyncio.run(
-        async_main(
-            (
-                "Find me a machine learning course" 
-            )
-        )
-    )
+    asyncio.run(async_main(("Find me a machine learning course")))
