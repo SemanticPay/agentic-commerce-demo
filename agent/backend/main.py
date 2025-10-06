@@ -183,7 +183,7 @@ async def get_session_history(session_id: str):
 if __name__ == "__main__":
     # Run the server
     uvicorn.run(
-        "http_server:app",
+        "main:app",
         host="0.0.0.0",
         port=8001,
         reload=True
