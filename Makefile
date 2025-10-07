@@ -58,7 +58,7 @@ agent-backend: ## Run the agent backend server
 .PHONY: agent-frontend
 agent-frontend: ## Run the agent frontend server
 	@echo "$(COLOR_BLUE)Starting agent frontend on port $(PORT_FRONTEND)...$(COLOR_RESET)"
-	$(PYTHON_VENV) -m http.server $(PORT_FRONTEND) --directory agent/frontend/
+	cd agent/frontend && npm run dev
 
 .PHONY: merchant
 merchant: ## Run the merchant service
