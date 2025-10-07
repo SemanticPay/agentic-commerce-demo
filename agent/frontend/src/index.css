@@ -140,6 +140,20 @@ body {
   border-top: 8px solid white;
 }
 
+.message img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 12px;
+  margin-top: 8px;
+  object-fit: contain;
+}
+
+.message-content {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
 .input-container {
   display: flex;
   gap: 12px;

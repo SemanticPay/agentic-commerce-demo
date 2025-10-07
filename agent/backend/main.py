@@ -128,24 +128,33 @@ async def query_agent(request: QueryRequest):
         )
         ui_resources = []
 
-        # https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRSCTJxNM1ZuXKk4EGRpGh5FAP-4Rlf8rmcdA&s
         for item in items:
-            ui_resource = create_ui_resource({
-                "uri": "ui://product-card-demo",
-                "content": {
-                    "type": "rawHtml",
-                    "htmlString": f"""
-                    <div style="border: 1px solid #ddd; border-radius: 8px; padding: 16px; max-width: 300px; font-family: Arial, sans-serif; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                        <img src="{item.get('image_url')}" 
-                             style="width: 100%; height: 200px; object-fit: cover; border-radius: 4px; margin-bottom: 12px;" 
-                             alt="{item.get('title')}"/>
-                        <h3 style="margin: 0 0 8px 0; font-size: 18px; color: #333;">{item.get('title')}</h3>
-                        <p style="margin: 0; font-size: 20px; font-weight: bold; color: #007bff;">{item.get('price')}</p>
-                    </div>
-                    """
-                },
-                "encoding": "text"
-            })
+            # ui_resource = create_ui_resource({
+            #     "uri": "ui://product-card-demo",
+            #     "content": {
+            #         "type": "rawHtml",
+            #         "htmlString": f"""
+            #         <div style="border: 1px solid #ddd; border-radius: 8px; padding: 16px; max-width: 300px; font-family: Arial, sans-serif; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            #             <img src="{item.get('image_url')}" 
+            #                  style="width: 100%; height: 200px; object-fit: cover; border-radius: 4px; margin-bottom: 12px;" 
+            #                  alt="{item.get('title')}"/>
+            #             <h3 style="margin: 0 0 8px 0; font-size: 18px; color: #333;">{item.get('title')}</h3>
+            #             <p style="margin: 0; font-size: 20px; font-weight: bold; color: #007bff;">{item.get('price')}</p>
+            #         </div>
+            #         """
+            #     },
+            #     "encoding": "text"
+            # })
+            ui_resource = f"""
+                <div style="border: 1px solid #ddd; border-radius: 8px; padding: 16px; max-width: 300px; font-family: Arial, sans-serif; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                    <img src="{item.get('image_url')}" 
+                            style="width: 100%; height: 200px; object-fit: cover; border-radius: 4px; margin-bottom: 12px;" 
+                            alt="{item.get('title')}"/>
+                    <h3 style="margin: 0 0 8px 0; font-size: 18px; color: #333;">{item.get('title')}</h3>
+                    <p style="margin: 0; font-size: 20px; font-weight: bold; color: #007bff;">{item.get('price')}</p>
+                </div>
+            """
+            print("----> ADDING ITEM RESOURCE: ", item["title"])
             ui_resources.append(ui_resource)
 
         # Update session with new messages
