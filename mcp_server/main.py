@@ -9,11 +9,10 @@ from base_types import (
     DelegatePaymentResponse,
     FullfillmentAddress,
     SearchRequest,
-    Item,
     Buyer,
     Order,
 )
-from mcp_server.widgets import ItemWidget
+from widgets import ItemWidget
 from utils import (
     calculate_cart_final_price,
     get_unique_checkout_session_id,

@@ -1,12 +1,12 @@
-import asyncio
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
-from typing import List, Optional, Dict
+from pydantic import BaseModel, Field
+from typing import Any, List, Optional, Dict
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 from dotenv import load_dotenv
 import uuid
 from datetime import datetime
+from mcp_ui_server import create_ui_resource
 
 from agent import async_main
 
@@ -63,6 +63,7 @@ class QueryResponse(BaseModel):
     status: str
     session_id: Optional[str] = None
     updated_chat_history: Optional[List[ChatMessage]] = []
+    ui_objects: list[Any] = Field(default_factory=list)
 
 
 @app.get("/")
@@ -143,14 +144,34 @@ async def query_agent(request: QueryRequest):
         )
         sessions[session_id].append(agent_message)
 
+        # Inline HTML
+        ui_resource = create_ui_resource({
+            "uri": "ui://product-card-demo",
+            "content": {
+                "type": "rawHtml",
+                "htmlString": """
+                <div style="border: 1px solid #ddd; border-radius: 8px; padding: 16px; max-width: 300px; font-family: Arial, sans-serif; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                    <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRSCTJxNM1ZuXKk4EGRpGh5FAP-4Rlf8rmcdA&s" 
+                         style="width: 100%; height: 200px; object-fit: cover; border-radius: 4px; margin-bottom: 12px;" 
+                         alt="Product Image">
+                    <h3 style="margin: 0 0 8px 0; font-size: 18px; color: #333;">Sample Product</h3>
+                    <p style="margin: 0; font-size: 20px; font-weight: bold; color: #007bff;">$29.99</p>
+                </div>
+                """
+            },
+            "encoding": "text"
+        })
+
         return QueryResponse(
             question=request.question,
             response=response if response else "No response generated",
             status="success",
             session_id=session_id,
             updated_chat_history=sessions[session_id],
+            ui_objects=[ui_resource],
         )
     except Exception as e:
+        print("Error processing query:", str(e))
         raise HTTPException(status_code=500, detail=f"Error processing query: {str(e)}")
 
 

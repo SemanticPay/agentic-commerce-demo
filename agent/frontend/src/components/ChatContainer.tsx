@@ -24,11 +24,12 @@ const ChatContainer: React.FC = () => {
     scrollToBottom()
   }, [messages])
 
-  const addMessage = (content: string, isUser: boolean = false) => {
+  const addMessage = (content: string, isUser: boolean = false, ui_objects?: any[]) => {
     const newMessage: ChatMessage = {
       role: isUser ? 'user' : 'agent',
       content,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      ui_objects
     }
     setMessages(prev => [...prev, newMessage])
     return newMessage
@@ -63,7 +64,7 @@ const ChatContainer: React.FC = () => {
         setSessionId(data.session_id)
       }
       
-      addMessage(data.response)
+      addMessage(data.response, false, data.ui_objects)
 
     } catch (error) {
       console.error('Error:', error)

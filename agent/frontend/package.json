@@ -12,6 +12,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@mcp-ui/client": "^5.12.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
   },
