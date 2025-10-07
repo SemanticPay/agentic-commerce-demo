@@ -93,13 +93,7 @@ def search_items(query: str = "", keywords: str = "") -> list[ItemWidget]:
     req = SearchRequest(query=query, keywords=keywords)
     items = get_items_by_filters(req.query, req.keywords)
 
-    widgets: list[ItemWidget] = []
-    for item in items:
-        widget = ItemWidget(data=item)
-        widgets.append(widget) 
-
-    return widgets
-
+    return items
 
 @mcp.tool()
 def delegate_payment(request: DelegatePaymentRequest) -> DelegatePaymentResponse:

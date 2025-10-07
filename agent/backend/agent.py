@@ -101,17 +101,22 @@ async def async_main(question, chat_history=None, session_id=None):
                         f"\n[{author}]: {function_call.name}( {json.dumps(function_call.args)} )"
                     )
 
+            items = []
             elif function_responses:
                 for function_response in function_responses:
                     function_name = function_response.name
                     # Detect different payloads and handle accordingly
                     application_payload = function_response.response
+
+                    if function_name == "search_items":
+                        items = application_payload
+                        
                     print(
                         f"\n[{author}]: {function_name} responds -> {application_payload}"
                     )
 
         print(f"\033[92m{full_response}\033[0m")
-        return full_response
+        return full_response, items
     finally:
         # Properly close the MCP connection to avoid async context issues
         await semanticpay_mcp.close()
