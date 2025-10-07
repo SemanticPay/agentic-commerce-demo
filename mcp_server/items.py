@@ -6,7 +6,7 @@ ITEMS = [
         title="Chanel Classic Flap Bag",
         description="Iconic quilted lambskin bag with chain strap and CC turn-lock",
         price=8500.00,
-        image_url="https://theluxuryflavor.com/wp-content/uploads/2024/11/WhatsApp-Image-2024-11-25-at-3.30.12-PM.jpeg",
+        image_url="https://sothebys-com.brightspotcdn.com/b6/01/91febf0e42e381409de6b94f4259/copy-of-untitled-64.jpg",
     ),
     Item(
         id=2,
@@ -27,14 +27,14 @@ ITEMS = [
         title="Gucci Dionysus Shoulder Bag",
         description="Embroidered leather shoulder bag with signature tiger head closure",
         price=3200.00,
-        image_url="https://theluxuryflavor.com/wp-content/uploads/2024/11/WhatsApp-Image-2024-11-25-at-3.30.12-PM.jpeg",
+        image_url="https://di2ponv0v5otw.cloudfront.net/posts/2025/06/25/685c70612326c83abec7497e/m_685c707cd8024c7e6a998fd2.jpg",
     ),
     Item(
         id=5,
         title="Dior Lady Dior Handbag",
         description="Quilted lambskin bag with iconic Dior charms and top handles",
         price=5500.00,
-        image_url="https://theluxuryflavor.com/wp-content/uploads/2024/11/WhatsApp-Image-2024-11-25-at-3.30.12-PM.jpeg",
+        image_url="https://medias.collectorsquare.com/images/products/412065/00pp-dior-lady-dior-small-model-handbag-in-green-leather-cannage.jpg",
     ),
     Item(
         id=6,
