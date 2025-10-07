@@ -6,6 +6,7 @@ class Item(BaseModel):
     title: str
     description: str
     price: float
+    image_url: str
 
 
 class Address(BaseModel):

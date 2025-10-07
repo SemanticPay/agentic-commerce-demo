@@ -70,6 +70,7 @@ async def async_main(question, chat_history=None, session_id=None):
         )
 
         full_response = ""
+        items = []
 
         # Results Handling
         # print(events_async)
@@ -100,16 +101,15 @@ async def async_main(question, chat_history=None, session_id=None):
                     print(
                         f"\n[{author}]: {function_call.name}( {json.dumps(function_call.args)} )"
                     )
-
-            items = []
             elif function_responses:
                 for function_response in function_responses:
                     function_name = function_response.name
                     # Detect different payloads and handle accordingly
-                    application_payload = function_response.response
-
+                    application_payload = function_response.response["result"].structuredContent.get("result", None)
+                    
                     if function_name == "search_items":
                         items = application_payload
+                        print("-------> ITEMS:", items)
                         
                     print(
                         f"\n[{author}]: {function_name} responds -> {application_payload}"

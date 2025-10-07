@@ -11,8 +11,8 @@ from base_types import (
     SearchRequest,
     Buyer,
     Order,
+    Item,
 )
-from widgets import ItemWidget
 from utils import (
     calculate_cart_final_price,
     get_unique_checkout_session_id,
@@ -79,7 +79,7 @@ def create_checkout_session(
 
 
 @mcp.tool()
-def search_items(query: str = "", keywords: str = "") -> list[ItemWidget]:
+def search_items(query: str = "", keywords: str = "") -> list[Item]:
     """
     Search for items based on query and keywords in their title.
 
