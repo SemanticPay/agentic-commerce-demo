@@ -1,7 +1,7 @@
 import requests
 from typing import List, Dict, Any, Optional
 import json
-from client.base_types import Product, SearchProductsResponse, CartInput, CartCreateResponse
+from client.base_types import Product, SearchProductsResponse, CartInput, CartCreateResponse, Cart
 from client.interface import StoreFrontClient
 
 
@@ -322,6 +322,7 @@ class ShopifyGraphQLClient(StoreFrontClient):
         }
 
         data = self._execute_query(graphql_query, variables)
+        cart_data = data.get("cart")
 
         return Cart(**cart_data)
 
