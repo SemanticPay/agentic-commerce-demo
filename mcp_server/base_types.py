@@ -1,8 +1,8 @@
 from pydantic import BaseModel
 
 
-class Item(BaseModel):
-    id: int
+class Product(BaseModel):
+    id: str
     title: str
     description: str
     price: float
@@ -19,7 +19,7 @@ class Address(BaseModel):
 
 
 class Cart(BaseModel):
-    items: list[Item]
+    products: list[Product]
     final_price: float
 
 
@@ -70,14 +70,14 @@ class SearchRequest(BaseModel):
 
 
 class SearchResponse(BaseModel):
-    items: list[Item]
+    products: list[Product]
 
 
 ### /checkout_sessions endpoint
 
 
 class CheckoutSessionRequest(BaseModel):
-    item_ids: list[str]
+    product_ids: list[str]
     buyer: Buyer
     fullfillment_address: FullfillmentAddress
 
@@ -102,7 +102,7 @@ class DelegatePaymentResponse(BaseModel):
 
 class Order(BaseModel):
     checkout_session_id: str
-    items: list[Item]
+    products: list[Product]
     buyer: Buyer
     fullfillment_address: FullfillmentAddress
     status: str  # "waiting_for_payment" or "done"

@@ -107,7 +107,7 @@ async def async_main(question, chat_history=None, session_id=None):
                     # Detect different payloads and handle accordingly
                     application_payload = function_response.response["result"].structuredContent.get("result", None)
                     
-                    if function_name == "search_items":
+                    if function_name == "search":
                         items = application_payload
                         print("-------> ITEMS:", items)
                         
