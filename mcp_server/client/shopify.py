@@ -1,7 +1,7 @@
 import requests
 from typing import List, Dict, Any, Optional
 import json
-from client.base_types import Product, SearchProductsResponse
+from client.base_types import Product, SearchProductsResponse, CartInput, CartCreateResponse
 from client.interface import StoreFrontClient
 
 
@@ -164,8 +164,92 @@ class ShopifyGraphQLClient(StoreFrontClient):
         except Exception as e:
             raise Exception(f"Failed to search products: {str(e)}")
 
-    def create_cart(self):
-        raise NotImplementedError("Create cart functionality is not implemented yet.")
+
+    def create_cart(self, cart_input: CartInput) -> CartCreateResponse:
+        """
+        Create a new cart using the Shopify Storefront API.
+        
+        Args:
+            cart_input: CartInput object containing cart data (lines, attributes, etc.)
+            
+        Returns:
+            CartCreateResponse containing the created cart, user errors, and warnings
+        """
+        
+        graphql_mutation = """
+        mutation cartCreate($input: CartInput!) {
+            cartCreate(input: $input) {
+                cart {
+                    id
+                    checkoutUrl
+                    totalQuantity
+                    cost {
+                        subtotalAmount {
+                            amount
+                            currencyCode
+                        }
+                        totalTaxAmount {
+                            amount
+                            currencyCode
+                        }
+                        totalAmount {
+                            amount
+                            currencyCode
+                        }
+                    }
+                    buyerIdentity {
+                        email
+                        phone
+                        companyLocationId
+                        countryCode
+                        customerAccessToken
+                        preferences
+                        purchasingCompany
+                    }
+                    attributes {
+                        key
+                        value
+                    }
+                    discountCodes {
+                        code
+                        applicable
+                    }
+                    note
+                    createdAt
+                    updatedAt
+                }
+                userErrors {
+                    field
+                    message
+                }
+                warnings {
+                    message
+                }
+            }
+        }
+        """
+        
+        variables = {
+            "input": cart_input.model_dump(exclude_none=True, by_alias=True)
+        }
+        
+        try:
+            data = self._execute_query(graphql_mutation, variables)
+            cart_create_data = data.get("cartCreate", {})
+            
+            cart_data = cart_create_data.get("cart")
+            user_errors = cart_create_data.get("userErrors", [])
+            warnings = cart_create_data.get("warnings", [])
+            
+            return CartCreateResponse(
+                cart=cart_data,
+                user_errors=user_errors,
+                warnings=warnings
+            )
+            
+        except Exception as e:
+            raise Exception(f"Failed to create cart: {str(e)}")
+            
 
     def get_cart(self):
         raise NotImplementedError("Cart functionality is not implemented yet.")  
