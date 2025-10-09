@@ -249,10 +249,82 @@ class ShopifyGraphQLClient(StoreFrontClient):
             
         except Exception as e:
             raise Exception(f"Failed to create cart: {str(e)}")
-            
 
-    def get_cart(self):
-        raise NotImplementedError("Cart functionality is not implemented yet.")  
+
+    def get_cart(self, id: str):
+        """
+        Get a cart by id using the Shopify Storefront API.
+        
+        Args:
+            id: The id of the cart
+            
+        Returns:
+            Cart containing the cart data
+        """
+
+        graphql_query = """
+        query cart($id: ID!) {
+            cart(id: $id) {
+                id
+                checkoutUrl
+                totalQuantity
+                cost {
+                    subtotalAmount {
+                        amount
+                        currencyCode
+                    }
+                }
+                delivery {
+                    addresses {
+                      selected
+                      address {
+                        CartDeliveryAddress{
+                            address1
+                            address2
+                            city
+                            country
+                            postalCode
+                            phone
+                            firstName
+                            lastName
+                        }
+                      }
+                      id
+                      oneTimeUse
+                    }
+                }
+                buyerIdentity {
+                    email
+                    phone
+                    companyLocationId
+                    countryCode
+                    customerAccessToken
+                    preferences
+                    purchasingCompany
+                }
+                attributes {
+                    key
+                    value
+                }
+                discountCodes {
+                    code
+                    applicable
+                }
+                note
+                createdAt
+                updatedAt
+            }
+        }
+        """
+
+        variables = {
+            "id": id
+        }
+
+        data = self._execute_query(graphql_query, variables)
+
+        return Cart(**cart_data)
+
 
     def add_to_cart(self, product_id: str, quantity: int = 1):
         raise NotImplementedError("Add to cart functionality is not implemented yet.")
