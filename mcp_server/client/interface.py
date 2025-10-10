@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from base_types import CartCreateResponse, CartInput, SearchProductsResponse
+from base_types import CartCreateResponse, CartCreateRequest, SearchProductsRequest, SearchProductsResponse
 
 
 class StoreFrontClient(ABC):
@@ -10,19 +10,13 @@ class StoreFrontClient(ABC):
     @abstractmethod
     def search_products(
         self,
-        query: str = "",
-        first: int = 10,
-        sort_key: str = "RELEVANCE",
-        reverse: bool = False
+        req: SearchProductsRequest
     ) -> SearchProductsResponse:
         """
         Search for products in the storefront.
         
         Args:
-            query: Search query string (e.g., "shoes", "red", "nike")
-            first: Number of products to return
-            sort_key: Sort key (RELEVANCE, TITLE, PRICE, CREATED_AT, etc.)
-            reverse: Whether to reverse the sort order
+            req (SearchProductsRequest): The search request parameters.
             
         Returns:
             SearchProductsResponse containing a list of products
@@ -30,7 +24,7 @@ class StoreFrontClient(ABC):
         pass
 
     @abstractmethod
-    def create_cart(self, cart_input: CartInput) -> CartCreateResponse:
+    def cart_create(self, cart_input: CartCreateRequest) -> CartCreateResponse:
         pass
 
     @abstractmethod

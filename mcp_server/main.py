@@ -14,6 +14,7 @@ from base_types import (
 )
 from client.shopify import ShopifyGraphQLClient
 from client.interface import StoreFrontClient
+from mcp_server.client.base_types import SearchProductsRequest
 
 
 mcp = FastMCP("SemanticPay Shopping Server")
@@ -21,7 +22,7 @@ shopify_client = ShopifyGraphQLClient()
 
 @mcp.tool()
 def search(query: str = "") -> list[Product]:
-    resp = shopify_client.search_products(query=query) 
+    resp = shopify_client.search_products(SearchProductsRequest(query=query)) 
 
     products: list[Product] = []
     for prod in resp.products:

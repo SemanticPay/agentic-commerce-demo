@@ -1,7 +1,7 @@
 import requests
 from typing import List, Dict, Any, Optional
 import json
-from base_types import BuyerIdentity, CartDeliveryInput, Product, SearchProductsResponse, CartInput, CartCreateResponse, Cart, CartLineInput
+from base_types import Address, AddressOption, BuyerIdentity, CartAddressInput, CartDeliveryInput, Product, SearchProductsRequest, SearchProductsResponse, CartCreateRequest, CartCreateResponse, Cart, CartLineInput
 from interface import StoreFrontClient
 
 
@@ -63,22 +63,16 @@ class ShopifyGraphQLClient(StoreFrontClient):
     
     def search_products(
         self,
-        query: str = "",
-        first: int = 10,
-        sort_key: str = "RELEVANCE",
-        reverse: bool = False
+        req: SearchProductsRequest
     ) -> SearchProductsResponse:
         """
         Search for products using the Shopify Storefront API.
         
         Args:
-            query: Search query string (e.g., "shoes", "red", "nike")
-            first: Number of products to return (max 250)
-            sort_key: Sort key (RELEVANCE, TITLE, PRICE, CREATED_AT, etc.)
-            reverse: Whether to reverse the sort order
+            req: SearchProductsRequest object containing search parameters 
             
         Returns:
-            List of product dictionaries containing id, title, description, etc.
+            SearchProductsResponse containing the list of found products
         """
 
         graphql_query = """
@@ -123,12 +117,12 @@ class ShopifyGraphQLClient(StoreFrontClient):
             }
         }
         """
-        
+
         variables = {
-            "query": query,
-            "first": min(first, 250),  # Shopify limit
-            "sortKey": sort_key,
-            "reverse": reverse
+            "query": req.query,
+            "first": min(req.first, 250),  # Shopify limit
+            "sortKey": req.sort_key,
+            "reverse": req.reverse
         }
         
         try:
@@ -151,17 +145,13 @@ class ShopifyGraphQLClient(StoreFrontClient):
                 product["variants"] = variants
 
                 # For single variant products, simplify the structure but keep at least one variant
-                if len(product.get("variants", [])) == 1:
-                    # Keep the variants array for cart operations
+                if len(product.get("variants", [])) <= 1:
                     price = product.get("priceRange").get("minVariantPrice")
                     product["price"] = price
                     product.pop("priceRange")
-                elif len(product.get("variants", [])) == 0:
+                if len(product.get("variants", [])) == 0:
                     # No variants at all, remove the field
                     product.pop("variants", None)
-                    price = product.get("priceRange").get("minVariantPrice")
-                    product["price"] = price
-                    product.pop("priceRange")
                 
                 products.append(Product(**product))
             
@@ -171,12 +161,12 @@ class ShopifyGraphQLClient(StoreFrontClient):
             raise Exception(f"Failed to search products: {str(e)}")
 
 
-    def create_cart(self, cart_input: CartInput) -> CartCreateResponse:
+    def cart_create(self, req: CartCreateRequest) -> CartCreateResponse:
         """
         Create a new cart using the Shopify Storefront API.
         
         Args:
-            cart_input: CartInput object containing cart data (lines, attributes, etc.)
+            req: CartCreateRequest object containing cart data (lines, buyer identity, etc.)
             
         Returns:
             CartCreateResponse containing the created cart, user errors, and warnings
@@ -230,17 +220,29 @@ class ShopifyGraphQLClient(StoreFrontClient):
                         phone
                         countryCode
                     }
-                    attributes {
-                        key
-                        value
+                    deliveryGroups(first: 10) {
+                        edges {
+                            node {
+                                id
+                                selectedDeliveryOption {
+                                    handle
+                                    title
+                                }
+                                deliveryAddress {
+                                    ... on MailingAddress {
+                                        address1
+                                        address2
+                                        city
+                                        countryCode
+                                        zip
+                                        phone
+                                        firstName
+                                        lastName
+                                    }
+                                }
+                            }
+                        }
                     }
-                    discountCodes {
-                        code
-                        applicable
-                    }
-                    note
-                    createdAt
-                    updatedAt
                 }
                 userErrors {
                     field
@@ -254,22 +256,19 @@ class ShopifyGraphQLClient(StoreFrontClient):
         """
         
         variables = {
-            "input": cart_input.model_dump(exclude_none=True, by_alias=True)
+            "input": req.model_dump(exclude_none=True, by_alias=True)
         }
         
         try:
             data = self._execute_query(graphql_mutation, variables)
             cart_create_data = data.get("cartCreate", {})
-            
-            cart_data = cart_create_data.get("cart")
+
+            cart_data = cart_create_data.get("cart", {})
             user_errors = cart_create_data.get("userErrors", [])
             warnings = cart_create_data.get("warnings", [])
             
-            # Convert cart_data to Cart object if it exists
-            cart = Cart(**cart_data) if cart_data else None
-            
             return CartCreateResponse(
-                cart=cart,
+                cart=Cart(**cart_data),
                 userErrors=user_errors,
                 warnings=warnings
             )
@@ -387,25 +386,36 @@ class ShopifyGraphQLClient(StoreFrontClient):
         except Exception as e:
             raise Exception(f"Failed to get cart: {str(e)}")
 
+    def add_to_cart(self, cart_id: str, product_id: str, quantity: int = 1):
+        pass
 
-    def add_to_cart(self, product_id: str, quantity: int = 1):
-        raise NotImplementedError("Add to cart functionality is not implemented yet.")
-
-    def remove_from_cart(self, product_id: str):
-        raise NotImplementedError("Remove from cart functionality is not implemented yet.")
+    def remove_from_cart(self, cart_id: str, product_id: str):
+        pass
 
     def get_payment_url(self, cart_id: str) -> str:
-        raise NotImplementedError("Payment URL functionality is not implemented yet.")
+        return ""
 
     def get_payment_status(self, order_id: str) -> str:
-        raise NotImplementedError("Payment status functionality is not implemented yet.")
+        return ""
+
+    # def add_to_cart(self, product_id: str, quantity: int = 1):
+    #     raise NotImplementedError("Add to cart functionality is not implemented yet.")
+
+    # def remove_from_cart(self, product_id: str):
+    #     raise NotImplementedError("Remove from cart functionality is not implemented yet.")
+
+    # def get_payment_url(self, cart_id: str) -> str:
+    #     raise NotImplementedError("Payment URL functionality is not implemented yet.")
+
+    # def get_payment_status(self, order_id: str) -> str:
+    #     raise NotImplementedError("Payment status functionality is not implemented yet.")
 
 if __name__ == "__main__":
     client = ShopifyGraphQLClient()
     
     # Test 1: Search for products
     print("=== Testing Product Search ===")
-    resp = client.search_products(query="bag", first=5)
+    resp = client.search_products(req=SearchProductsRequest(query="bag"))
     print(f"Found {len(resp.products)} products")
     
     if resp.products:
@@ -433,7 +443,7 @@ if __name__ == "__main__":
             # For single-variant products in Shopify, we need the variant ID
             # Let's search for products with "first: 10" and hopefully get some with variants
             print("No variants in initial search, trying broader search...")
-            resp2 = client.search_products(query="", first=10)
+            resp2 = client.search_products(SearchProductsRequest(query="", first=10))
             for product in resp2.products:
                 if hasattr(product, 'variants') and product.variants:
                     variant_id = product.variants[0].id
@@ -442,7 +452,7 @@ if __name__ == "__main__":
                     break
         
         if variant_id:
-            cart_input = CartInput(
+            cart_input = CartCreateRequest(
                 lines=[
                     CartLineInput(
                         merchandiseId=variant_id,
@@ -455,51 +465,51 @@ if __name__ == "__main__":
                     countryCode="US"
                 ),
                 delivery=CartDeliveryInput(addresses=[
-                    {
-                        "selected": True,
-                        "address": {
-                            "deliveryAddress": {
-                                "address1": "123 Main Street",
-                                "address2": "Apt 4B",
-                                "city": "New York",
-                                "provinceCode": "NY",
-                                "countryCode": "US",
-                                "zip": "10001",
-                                "firstName": "John",
-                                "lastName": "Doe",
-                                "phone": "+12125551234"
-                            }
-                        }
-                    }
+                    AddressOption(
+                        selected=True,
+                        address=CartAddressInput(
+                            deliveryAddress=Address(
+                                address1="123 Main Street",
+                                address2="Apt 4B",
+                                city="New York",
+                                countryCode="US",
+                                zip="10001",
+                                firstName="John",
+                                lastName="Doe",
+                                phone="+12125551234"
+                            )
+                        ),
+                    ),
                 ])
             )
             
             try:
-                cart_response = client.create_cart(cart_input)
+                cart_response = client.cart_create(cart_input)
                 
-                if cart_response.cart:
-                    print(f"✓ Cart created successfully!")
-                    print(f"  Cart ID: {cart_response.cart.id}")
-                    print(f"  Checkout URL: {cart_response.cart.checkout_url}")
-                    print(f"  Total Quantity: {cart_response.cart.total_quantity}")
+                print(cart_response.model_dump_json())
+                # if cart_response.cart:
+                #     print(f"✓ Cart created successfully!")
+                #     print(f"  Cart ID: {cart_response.cart.id}")
+                #     print(f"  Checkout URL: {cart_response.cart.checkout_url}")
+                #     print(f"  Total Quantity: {cart_response.cart.total_quantity}")
                     
-                    # Test 3: Get the cart we just created
-                    print("\n=== Testing Get Cart ===")
-                    try:
-                        retrieved_cart = client.get_cart(cart_response.cart.id)
-                        print(f"✓ Retrieved cart successfully!")
-                        print(f"  Cart ID: {retrieved_cart.id}")
-                        print(f"  Total Quantity: {retrieved_cart.total_quantity}")
-                        print(f"  Checkout URL: {retrieved_cart.checkout_url}")
-                    except Exception as e:
-                        print(f"✗ Failed to retrieve cart: {str(e)}")
+                #     # Test 3: Get the cart we just created
+                #     print("\n=== Testing Get Cart ===")
+                #     try:
+                #         retrieved_cart = client.get_cart(cart_response.cart.id)
+                #         print(f"✓ Retrieved cart successfully!")
+                #         print(f"  Cart ID: {retrieved_cart.id}")
+                #         print(f"  Total Quantity: {retrieved_cart.total_quantity}")
+                #         print(f"  Checkout URL: {retrieved_cart.checkout_url}")
+                #     except Exception as e:
+                #         print(f"✗ Failed to retrieve cart: {str(e)}")
                         
-                elif cart_response.user_errors:
-                    print(f"✗ Cart creation failed with errors:")
-                    for error in cart_response.user_errors:
-                        print(f"  - {error.message}")
-                else:
-                    print("✗ Cart creation failed: No cart returned and no errors")
+                # elif cart_response.user_errors:
+                #     print(f"✗ Cart creation failed with errors:")
+                #     for error in cart_response.user_errors:
+                #         print(f"  - {error.message}")
+                # else:
+                #     print("✗ Cart creation failed: No cart returned and no errors")
                     
             except Exception as e:
                 print(f"✗ Exception during cart creation: {str(e)}")
