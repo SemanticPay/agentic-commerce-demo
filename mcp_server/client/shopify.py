@@ -1,8 +1,8 @@
 import requests
 from typing import List, Dict, Any, Optional
 import json
-from client.base_types import Product, SearchProductsResponse, CartInput, CartCreateResponse, Cart
-from client.interface import StoreFrontClient
+from base_types import BuyerIdentity, CartDeliveryInput, Product, SearchProductsResponse, CartInput, CartCreateResponse, Cart, CartLineInput
+from interface import StoreFrontClient
 
 
 class ShopifyGraphQLClient(StoreFrontClient):
@@ -150,9 +150,15 @@ class ShopifyGraphQLClient(StoreFrontClient):
                     variants.append(var_edge["node"])
                 product["variants"] = variants
 
-                # For single vaiant products
-                if len(product.get("variants", [])) <= 1:
-                    product.pop("variants")
+                # For single variant products, simplify the structure but keep at least one variant
+                if len(product.get("variants", [])) == 1:
+                    # Keep the variants array for cart operations
+                    price = product.get("priceRange").get("minVariantPrice")
+                    product["price"] = price
+                    product.pop("priceRange")
+                elif len(product.get("variants", [])) == 0:
+                    # No variants at all, remove the field
+                    product.pop("variants", None)
                     price = product.get("priceRange").get("minVariantPrice")
                     product["price"] = price
                     product.pop("priceRange")
@@ -197,14 +203,32 @@ class ShopifyGraphQLClient(StoreFrontClient):
                             currencyCode
                         }
                     }
+                    lines(first: 250) {
+                        edges {
+                            node {
+                                id
+                                quantity
+                                merchandise {
+                                    ... on ProductVariant {
+                                        id
+                                        title
+                                        product {
+                                            id
+                                            title
+                                        }
+                                        price {
+                                            amount
+                                            currencyCode
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
                     buyerIdentity {
                         email
                         phone
-                        companyLocationId
                         countryCode
-                        customerAccessToken
-                        preferences
-                        purchasingCompany
                     }
                     attributes {
                         key
@@ -241,9 +265,12 @@ class ShopifyGraphQLClient(StoreFrontClient):
             user_errors = cart_create_data.get("userErrors", [])
             warnings = cart_create_data.get("warnings", [])
             
+            # Convert cart_data to Cart object if it exists
+            cart = Cart(**cart_data) if cart_data else None
+            
             return CartCreateResponse(
-                cart=cart_data,
-                user_errors=user_errors,
+                cart=cart,
+                userErrors=user_errors,
                 warnings=warnings
             )
             
@@ -268,39 +295,68 @@ class ShopifyGraphQLClient(StoreFrontClient):
                 id
                 checkoutUrl
                 totalQuantity
+                createdAt
+                updatedAt
                 cost {
                     subtotalAmount {
                         amount
                         currencyCode
                     }
+                    totalAmount {
+                        amount
+                        currencyCode
+                    }
                 }
-                delivery {
-                    addresses {
-                      selected
-                      address {
-                        CartDeliveryAddress{
-                            address1
-                            address2
-                            city
-                            country
-                            postalCode
-                            phone
-                            firstName
-                            lastName
+                lines(first: 250) {
+                    edges {
+                        node {
+                            id
+                            quantity
+                            merchandise {
+                                ... on ProductVariant {
+                                    id
+                                    title
+                                    product {
+                                        id
+                                        title
+                                    }
+                                    price {
+                                        amount
+                                        currencyCode
+                                    }
+                                }
+                            }
                         }
-                      }
-                      id
-                      oneTimeUse
+                    }
+                }
+                deliveryGroups(first: 10) {
+                    edges {
+                        node {
+                            id
+                            selectedDeliveryOption {
+                                handle
+                                title
+                            }
+                            deliveryAddress {
+                                ... on MailingAddress {
+                                    address1
+                                    address2
+                                    city
+                                    country
+                                    countryCodeV2
+                                    zip
+                                    phone
+                                    firstName
+                                    lastName
+                                }
+                            }
+                        }
                     }
                 }
                 buyerIdentity {
                     email
                     phone
-                    companyLocationId
                     countryCode
-                    customerAccessToken
-                    preferences
-                    purchasingCompany
                 }
                 attributes {
                     key
@@ -311,8 +367,6 @@ class ShopifyGraphQLClient(StoreFrontClient):
                     applicable
                 }
                 note
-                createdAt
-                updatedAt
             }
         }
         """
@@ -321,10 +375,17 @@ class ShopifyGraphQLClient(StoreFrontClient):
             "id": id
         }
 
-        data = self._execute_query(graphql_query, variables)
-        cart_data = data.get("cart")
-
-        return Cart(**cart_data)
+        try:
+            data = self._execute_query(graphql_query, variables)
+            cart_data = data.get("cart")
+            
+            if cart_data is None:
+                raise Exception(f"Cart with id {id} not found")
+            
+            return Cart(**cart_data)
+            
+        except Exception as e:
+            raise Exception(f"Failed to get cart: {str(e)}")
 
 
     def add_to_cart(self, product_id: str, quantity: int = 1):
@@ -341,5 +402,110 @@ class ShopifyGraphQLClient(StoreFrontClient):
 
 if __name__ == "__main__":
     client = ShopifyGraphQLClient()
+    
+    # Test 1: Search for products
+    print("=== Testing Product Search ===")
     resp = client.search_products(query="bag", first=5)
-    print(resp.model_dump_json(exclude_none=True))
+    print(f"Found {len(resp.products)} products")
+    
+    if resp.products:
+        print(f"\nFirst product: {resp.products[0].title}")
+        print(f"Price: {resp.products[0].price.amount} {resp.products[0].price.currency_code}")
+    
+    # Test 2: Create a cart
+    print("\n=== Testing Cart Creation ===")
+    if resp.products:
+        first_product = resp.products[0]
+        
+        # Try to get a variant ID from any product
+        variant_id = None
+        
+        # First, try products with explicit variants
+        for product in resp.products:
+            if hasattr(product, 'variants') and product.variants:
+                variant_id = product.variants[0].id
+                first_product = product
+                print(f"Using product with variants: {product.title}")
+                break
+        
+        # If no variants found, we need to fetch product details to get the default variant
+        if not variant_id:
+            # For single-variant products in Shopify, we need the variant ID
+            # Let's search for products with "first: 10" and hopefully get some with variants
+            print("No variants in initial search, trying broader search...")
+            resp2 = client.search_products(query="", first=10)
+            for product in resp2.products:
+                if hasattr(product, 'variants') and product.variants:
+                    variant_id = product.variants[0].id
+                    first_product = product
+                    print(f"Using product: {product.title}")
+                    break
+        
+        if variant_id:
+            cart_input = CartInput(
+                lines=[
+                    CartLineInput(
+                        merchandiseId=variant_id,
+                        quantity=1
+                    )
+                ],
+                buyerIdentity=BuyerIdentity(
+                    email="customer@example.com",
+                    phone="+12125551234",
+                    countryCode="US"
+                ),
+                delivery=CartDeliveryInput(addresses=[
+                    {
+                        "selected": True,
+                        "address": {
+                            "deliveryAddress": {
+                                "address1": "123 Main Street",
+                                "address2": "Apt 4B",
+                                "city": "New York",
+                                "provinceCode": "NY",
+                                "countryCode": "US",
+                                "zip": "10001",
+                                "firstName": "John",
+                                "lastName": "Doe",
+                                "phone": "+12125551234"
+                            }
+                        }
+                    }
+                ])
+            )
+            
+            try:
+                cart_response = client.create_cart(cart_input)
+                
+                if cart_response.cart:
+                    print(f"✓ Cart created successfully!")
+                    print(f"  Cart ID: {cart_response.cart.id}")
+                    print(f"  Checkout URL: {cart_response.cart.checkout_url}")
+                    print(f"  Total Quantity: {cart_response.cart.total_quantity}")
+                    
+                    # Test 3: Get the cart we just created
+                    print("\n=== Testing Get Cart ===")
+                    try:
+                        retrieved_cart = client.get_cart(cart_response.cart.id)
+                        print(f"✓ Retrieved cart successfully!")
+                        print(f"  Cart ID: {retrieved_cart.id}")
+                        print(f"  Total Quantity: {retrieved_cart.total_quantity}")
+                        print(f"  Checkout URL: {retrieved_cart.checkout_url}")
+                    except Exception as e:
+                        print(f"✗ Failed to retrieve cart: {str(e)}")
+                        
+                elif cart_response.user_errors:
+                    print(f"✗ Cart creation failed with errors:")
+                    for error in cart_response.user_errors:
+                        print(f"  - {error.message}")
+                else:
+                    print("✗ Cart creation failed: No cart returned and no errors")
+                    
+            except Exception as e:
+                print(f"✗ Exception during cart creation: {str(e)}")
+        else:
+            print("✗ No products with variants found to create a cart")
+    else:
+        print("✗ No products found to create a cart")
+    
+    print("\n=== Tests Complete ===")

@@ -36,20 +36,12 @@ def search(query: str = "") -> list[Product]:
     return products
 
 @mcp.tool()
-def create_or_update_cart():
+def create_cart():
     pass  
 
 @mcp.tool()
 def get_cart():
     pass
-
-@mcp.tool()
-def get_payment_link():
-    pass 
-
-@mcp.tool()
-def get_payment_status():
-    pass 
 
 
 if __name__ == "__main__":

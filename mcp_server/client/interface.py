@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from client.base_types import SearchProductsResponse
+from base_types import CartCreateResponse, CartInput, SearchProductsResponse
 
 
 class StoreFrontClient(ABC):
@@ -30,7 +30,7 @@ class StoreFrontClient(ABC):
         pass
 
     @abstractmethod
-    def create_cart(self):
+    def create_cart(self, cart_input: CartInput) -> CartCreateResponse:
         pass
 
     @abstractmethod
