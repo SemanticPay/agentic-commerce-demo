@@ -3,33 +3,74 @@ Abstract interface for e-commerce storefront clients.
 
 This module defines the contract that all storefront client implementations must follow.
 It provides a standardized interface for interacting with different e-commerce platforms
-(Shopify, WooCommerce, Magento, etc.) through a common API.
+(Shopify, WooCommerce, Magento, etc.) through a common API, enabling the MCP server to
+support multiple backends without changing the tool implementations.
+
+The interface uses the Strategy pattern to allow runtime selection of e-commerce
+platform implementations while maintaining a consistent API surface.
 
 Classes:
     StoreFrontClient: Abstract base class defining the storefront client interface.
+
+Design Pattern:
+    This module implements the Strategy pattern where:
+    - StoreFrontClient is the strategy interface
+    - Concrete implementations (ShopifyGraphQLClient, etc.) are strategy classes
+    - The factory module selects which strategy to instantiate
+    - The MCP server (main.py) is the context that uses the strategy
+
+Benefits:
+    - Platform Independence: MCP tools work with any e-commerce platform
+    - Extensibility: Add new platforms without modifying existing code
+    - Type Safety: All implementations must conform to typed contracts
+    - Testability: Easy to mock for testing by implementing the interface
 
 Usage:
     To implement a new storefront client, inherit from StoreFrontClient and implement
     all abstract methods:
     
-    >>> from interface import StoreFrontClient
+    >>> from mcp_server.client.interface import StoreFrontClient
+    >>> from mcp_server.client.base_types import *
     >>> 
     >>> class MyStoreFrontClient(StoreFrontClient):
+    ...     def __init__(self, api_url: str, api_key: str):
+    ...         self.api_url = api_url
+    ...         self.api_key = api_key
+    ...     
     ...     def search_products(self, req: SearchProductsRequest) -> SearchProductsResponse:
-    ...         # Implementation here
+    ...         # Call your platform's product search API
+    ...         # Transform response to SearchProductsResponse
     ...         pass
     ...     
     ...     def cart_create(self, req: CartCreateRequest) -> CartCreateResponse:
-    ...         # Implementation here
+    ...         # Call your platform's cart creation API
+    ...         # Transform response to CartCreateResponse
     ...         pass
     ...     
     ...     def cart_get(self, req: CartGetRequest) -> CartGetResponse:
-    ...         # Implementation here
+    ...         # Call your platform's cart retrieval API
+    ...         # Transform response to CartGetResponse
     ...         pass
+
+Integration Steps:
+    1. Create new client class implementing StoreFrontClient
+    2. Add provider to StoreProvider enum in base_types.py
+    3. Register in factory.py's get_storefront_client function
+    4. Update main.py configuration to use new provider
+
+See Also:
+    - base_types.py: Type definitions for requests/responses
+    - factory.py: Factory function for creating client instances
+    - shopify.py: Example implementation for Shopify
 """
 
 from abc import ABC, abstractmethod
-from base_types import CartCreateResponse, CartCreateRequest, CartGetRequest, CartGetResponse, SearchProductsRequest, SearchProductsResponse
+
+# Support both relative imports (when imported as module) and absolute imports (when run directly)
+try:
+    from .base_types import CartCreateResponse, CartCreateRequest, CartGetRequest, CartGetResponse, SearchProductsRequest, SearchProductsResponse
+except ImportError:
+    from base_types import CartCreateResponse, CartCreateRequest, CartGetRequest, CartGetResponse, SearchProductsRequest, SearchProductsResponse
 
 
 class StoreFrontClient(ABC):

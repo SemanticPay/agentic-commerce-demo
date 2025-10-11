@@ -53,8 +53,14 @@ See Also:
 
 import requests
 from typing import Dict, Any, Optional
-from base_types import BuyerIdentity, CartGetRequest, CartGetResponse, Product, SearchProductsRequest, SearchProductsResponse, CartCreateRequest, CartCreateResponse, Cart, CartLineInput
-from interface import StoreFrontClient
+
+# Support both relative imports (when imported as module) and absolute imports (when run directly)
+try:
+    from .base_types import BuyerIdentity, CartGetRequest, CartGetResponse, Product, SearchProductsRequest, SearchProductsResponse, CartCreateRequest, CartCreateResponse, Cart, CartLineInput, Address, AddressOption, CartAddressInput, CartDeliveryInput
+    from .interface import StoreFrontClient
+except ImportError:
+    from base_types import BuyerIdentity, CartGetRequest, CartGetResponse, Product, SearchProductsRequest, SearchProductsResponse, CartCreateRequest, CartCreateResponse, Cart, CartLineInput, Address, AddressOption, CartAddressInput, CartDeliveryInput
+    from interface import StoreFrontClient
 
 
 class ShopifyGraphQLClient(StoreFrontClient):
@@ -347,9 +353,6 @@ class ShopifyGraphQLClient(StoreFrontClient):
                     price = product.get("priceRange").get("minVariantPrice")
                     product["price"] = price
                     product.pop("priceRange")
-                if len(product.get("variants", [])) == 0:
-                    # No variants at all, remove the field
-                    product.pop("variants", None)
                 
                 products.append(Product(**product))
             
@@ -652,27 +655,45 @@ if __name__ == "__main__":
     print("=== Product Search Test ===")
     search_resp = client.search_products(SearchProductsRequest(query="bag", first=10))
     print(f"Found {len(search_resp.products)} products")
-    if search_resp.products:
-        print(f"First: {search_resp.products[0].title} - ${search_resp.products[0].price.amount}\n")
+    for prod in search_resp.products:
+        print(f"{prod.model_dump_json()}")
+    print()
     
     # Test 2: Create cart with first available variant
     print("=== Cart Creation Test ===")
-    variant_id = None
+    lines = []
     for product in search_resp.products:
-        if hasattr(product, 'variants') and product.variants:
-            variant_id = product.variants[0].id
-            print(f"Using product: {product.title}")
-            break
+        lines.append(CartLineInput(merchandiseId=product.variants[0].id, quantity=1))
     
-    if variant_id:
+    if lines:
         cart_req = CartCreateRequest(
-            lines=[CartLineInput(merchandiseId=variant_id, quantity=1)],
-            buyerIdentity=BuyerIdentity(email="test@example.com")
+            lines=lines,
+            buyerIdentity=BuyerIdentity(email="test@example.com"),
+            delivery=CartDeliveryInput(
+                addresses=[
+                    AddressOption(
+                        selected=True,
+                        address=CartAddressInput(
+                            deliveryAddress=Address(
+                                address1="123 Main St",
+                                address2="Apt 4B",
+                                city="New York",
+                                countryCode="US",
+                                zip="10001",
+                                firstName="John",
+                                lastName="Doe",
+                                phone="+1234567890",
+                            )
+                        )
+                    )
+                ]
+            ),
         )
         cart_resp = client.cart_create(cart_req)
         
-        if cart_resp.user_errors:
+        if cart_resp.user_errors or cart_resp.warnings:
             print(f"Errors: {[e.message for e in cart_resp.user_errors]}")
+            print(f"Warnings: {[w.message for w in cart_resp.warnings]}")
         else:
             print(f"Cart created: {cart_resp.cart.id}")
             print(f"Total: ${cart_resp.cart.cost.total_amount.amount}")

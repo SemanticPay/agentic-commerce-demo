@@ -48,7 +48,7 @@ clean: ## Remove Python cache files and virtual environment
 .PHONY: mcp
 mcp: ## Run the MCP server
 	@echo "$(COLOR_BLUE)Starting MCP server...$(COLOR_RESET)"
-	$(PYTHON_VENV) mcp_server/main.py
+	cd $(dir $(realpath $(firstword $(MAKEFILE_LIST)))) && PYTHONPATH=. $(PYTHON_VENV) mcp_server/main.py
 
 .PHONY: agent-backend
 agent-backend: ## Run the agent backend server

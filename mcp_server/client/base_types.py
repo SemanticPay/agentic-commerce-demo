@@ -1,32 +1,73 @@
 """
-Base type definitions for Shopify e-commerce API client.
+Base type definitions for e-commerce storefront API clients.
 
-This module contains Pydantic models representing core entities in the Shopify ecosystem,
-including products, carts, pricing, and user information. All models support both snake_case
-(Python) and camelCase (API) field naming through Pydantic aliases.
+This module contains Pydantic models representing core entities in e-commerce systems,
+including products, carts, pricing, and user information. These models are designed to
+be platform-agnostic and work across different e-commerce providers (Shopify, WooCommerce,
+Magento, etc.). All models support both snake_case (Python) and camelCase (API) field
+naming through Pydantic aliases for maximum compatibility.
 
-Classes:
-    Price: Represents a monetary value with currency.
-    PriceRange: Range of prices for product variants.
-    ProductVariant: A specific variant of a product (e.g., size, color).
-    Product: Complete product information including variants and pricing.
-    SortKey: Enumeration of available product sorting options.
-    CartLineInput: Input model for adding items to cart.
-    BuyerIdentity: Customer identification information.
-    Address: Physical address information.
-    CartAddressInput: Wrapper for delivery address in cart operations.
-    AddressOption: Delivery address option with selection status.
-    CartDeliveryInput: Container for delivery address options.
-    UserError: API error message with field context.
-    CartWarning: Warning message for cart operations.
-    Cost: Financial breakdown of cart costs.
-    Cart: Shopping cart with items and checkout information.
-    SearchProductsRequest: Request parameters for product search.
-    SearchProductsResponse: Product search results.
-    CartGetRequest: Request to retrieve cart by ID.
-    CartGetResponse: Response containing cart data.
-    CartCreateRequest: Request to create a new cart.
-    CartCreateResponse: Response from cart creation with errors/warnings.
+Data Models:
+    Core Entities:
+        - StoreProvider: Enum of supported e-commerce platforms.
+        - Price: Represents a monetary value with currency code.
+        - PriceRange: Min/max price range across product variants.
+        - ProductVariant: A specific variant of a product (e.g., size, color).
+        - Product: Complete product information including variants and pricing.
+        - SortKey: Enumeration of product sorting options.
+    
+    Cart & Customer:
+        - CartLineInput: Input model for adding line items to cart.
+        - BuyerIdentity: Customer identification (email, phone).
+        - Address: Physical mailing/shipping address.
+        - CartAddressInput: Wrapper for delivery address.
+        - AddressOption: Delivery address option with selection status.
+        - CartDeliveryInput: Container for delivery configuration.
+        - Cost: Financial breakdown of cart costs (subtotal, tax, total).
+        - Cart: Shopping cart with items and checkout information.
+    
+    API Communication:
+        - UserError: User-facing error message with field context.
+        - CartWarning: Non-fatal warning message for cart operations.
+        - SearchProductsRequest: Parameters for product search queries.
+        - SearchProductsResponse: Product search results.
+        - CartGetRequest: Request to retrieve existing cart by ID.
+        - CartGetResponse: Response containing retrieved cart data.
+        - CartCreateRequest: Request to create a new shopping cart.
+        - CartCreateResponse: Response from cart creation with errors/warnings.
+
+Field Naming:
+    All models support dual naming conventions for API compatibility:
+    - Python convention: snake_case (e.g., buyer_identity, total_amount)
+    - API convention: camelCase (e.g., buyerIdentity, totalAmount)
+    
+    This is achieved through Pydantic's Field aliases, allowing seamless
+    serialization/deserialization with various e-commerce platform APIs.
+
+Example:
+    >>> # Create a product with either naming convention
+    >>> product = Product(
+    ...     id="123",
+    ...     title="T-Shirt",
+    ...     description="Cotton t-shirt",
+    ...     images=["https://example.com/img.jpg"],
+    ...     price=Price(amount=19.99, currency_code="USD"),
+    ...     price_range=PriceRange(...)  # Using snake_case
+    ... )
+    >>> # Or using API naming
+    >>> product = Product(
+    ...     id="123",
+    ...     title="T-Shirt",
+    ...     description="Cotton t-shirt",
+    ...     images=["https://example.com/img.jpg"],
+    ...     price=Price(amount=19.99, currencyCode="USD"),
+    ...     priceRange=PriceRange(...)  # Using camelCase
+    ... )
+
+See Also:
+    - interface.py: Abstract StoreFrontClient interface
+    - factory.py: Factory for creating provider-specific clients
+    - shopify.py: Shopify-specific implementation
 """
 
 from enum import Enum
@@ -119,8 +160,7 @@ class Product(BaseModel):
         price (Price): Base/default price for the product.
         price_range (PriceRange | None): Optional price range if product has variants
             with different prices. Maps to "priceRange" in API responses.
-        variants (list[ProductVariant] | None): Optional list of product variants.
-            May be None if variants weren't requested or product has no variants.
+        variants (list[ProductVariant]): List of product variants.
     
     Example:
         >>> product = Product(
@@ -139,7 +179,7 @@ class Product(BaseModel):
     images: list[str]
     price: Price
     price_range: PriceRange | None = Field(default=None, alias="priceRange")
-    variants: list[ProductVariant] | None = None
+    variants: list[ProductVariant]
 
 
 class SortKey(Enum):

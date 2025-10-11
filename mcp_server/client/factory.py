@@ -61,9 +61,15 @@ See Also:
     - shopify.py: Shopify-specific client implementation
 """
 
-from interface import StoreFrontClient
-from shopify import ShopifyGraphQLClient
-from base_types import StoreProvider
+# Support both relative imports (when imported as module) and absolute imports (when run directly)
+try:
+    from .interface import StoreFrontClient
+    from .shopify import ShopifyGraphQLClient
+    from .base_types import StoreProvider
+except ImportError:
+    from interface import StoreFrontClient
+    from shopify import ShopifyGraphQLClient
+    from base_types import StoreProvider
 
 
 def get_storefront_client(provider: StoreProvider, **provider_kwargs) -> StoreFrontClient:
