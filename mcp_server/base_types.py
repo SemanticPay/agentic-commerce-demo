@@ -85,6 +85,9 @@ class CheckoutSessionRequest(BaseModel):
 class CheckoutSessionResponse(BaseModel):
     checkout_session: CheckoutSession
 
+# class Cart(BaseModel):
+
+
 
 ### /delegate_payment endpoint
 
