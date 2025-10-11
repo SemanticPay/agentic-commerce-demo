@@ -33,6 +33,15 @@ from enum import Enum
 from pydantic import BaseModel, ConfigDict, Field
 
 
+class StoreProvider(Enum):
+    """Represents a specific store provider.
+    
+    Options:
+        - SHOPIFY
+    """
+    SHOPIFY = "SHOPIFY"
+
+
 class Price(BaseModel):
     """Represents a monetary value with its currency.
     
