@@ -14,9 +14,18 @@ const Message: React.FC<MessageProps> = ({ message }) => {
         {message.content}
       </div>
 
-    {message.ui_objects && message.ui_objects.map((uiObject, index) => (
-      <div key={index} dangerouslySetInnerHTML={{ __html: uiObject }} />
-    ))}
+    {/* {message.widgets && message.widgets.map((widget, index) => (
+      // <div key={index} dangerouslySetInnerHTML={{ __html: widget }} />
+      <div>Hello!</div>
+    ))} */}
+
+      {message.widgets?.map((widget, index) => {
+        console.log('Widget:', widget)
+        return (
+          // <div key={index} dangerouslySetInnerHTML={{ __html: widget }} />
+          <div key={index}>Hello</div>
+        )
+      })}
     </div>
   )
 }

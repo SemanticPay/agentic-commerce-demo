@@ -15,15 +15,15 @@ Overview:
        - Returns product IDs, titles, descriptions, images, and prices
        - Supports empty query to browse all products
     
-    2. create_shopping_cart: Create a cart with items and customer info
+    2. cart_create: Create a cart with items and customer info
        - Requires product IDs (from search), quantities, buyer info, and delivery address
        - Returns cart with checkout URL and pricing breakdown
        - Validates inventory and calculates totals including tax
     
-    3. get_cart: Retrieve existing cart by ID
+    3. cart_get: Retrieve existing cart by ID
        - Fetches current cart state including updated pricing
        - Useful for resuming shopping sessions
-       - Returns same structure as create_shopping_cart
+       - Returns same structure as cart_create
 
 Architecture:
     MCP Server (FastMCP) ← this module
@@ -80,7 +80,7 @@ AI Agent Usage:
     Agent: "I found 3 options... [shows results]"
     User: "I'll take the Ocean Blue Tote"
     Agent: [collects shipping info and email]
-    Agent: [calls create_shopping_cart(...)]
+    Agent: [calls cart_create(...)]
     Agent: "Your cart is ready! Total: $45.99. Checkout here: [URL]"
 
 Error Handling:
@@ -265,7 +265,7 @@ def search_products(query: str = "") -> ProductList:
     return prod_list
 
 @mcp.tool(
-    name="create_shopping_cart",
+    name="cart_create",
     description="""Create a shopping cart with items and customer information.
     
     This MCP tool allows AI agents to create a complete shopping cart including
@@ -558,7 +558,7 @@ def cart_create(
     return cart
 
 @mcp.tool(
-    name="get_cart",
+    name="cart_get",
     description="""Retrieve an existing shopping cart by its unique identifier.
     
     This MCP tool allows AI agents to fetch the current state of a previously
