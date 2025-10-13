@@ -1,6 +1,8 @@
 import asyncio
 import json
 import uuid
+import logging
+import sys
 from dotenv import load_dotenv
 from google.adk.agents import Agent
 
@@ -18,19 +20,38 @@ except ImportError:
     from base_types import AgentCallRequest, AgentCallResponse, FunctionPayload
     from prompt import ROOT_AGENT_INSTR
 
+# Configure logging to stdout
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[logging.StreamHandler(sys.stdout)]
+)
+logger = logging.getLogger(__name__)
+
 # Load environment variables from .env file
+logger.info("Loading environment variables for agent")
 load_dotenv()
+logger.info("Environment variables loaded")
 
 
 async def call_agent(req: AgentCallRequest) -> AgentCallResponse:
     """Executes one turn of the shopping agent with a query and full chat context."""
+    logger.info("="*60)
+    logger.info("call_agent function invoked")
+    logger.info(f"Question: {req.question}")
+    logger.info(f"Session ID: {req.session_id}")
+    logger.info(f"Chat history length: {len(req.chat_history) if req.chat_history else 0}")
+    
     try:
+        logger.info("Initializing MCP server connection")
         MCP_SERVER = McpToolset(
             connection_params=StreamableHTTPConnectionParams(
                 url="http://localhost:8000/mcp",
             )
         )
+        logger.info("MCP server connection established at http://localhost:8000/mcp")
 
+        logger.info("Creating ROOT_AGENT with Gemini 2.5 Flash model")
         ROOT_AGENT = Agent(
             model="gemini-2.5-flash",
             name="root_agent",
@@ -40,96 +61,149 @@ async def call_agent(req: AgentCallRequest) -> AgentCallResponse:
                 MCP_SERVER,
             ],
         )
+        logger.info("ROOT_AGENT created successfully")
 
 
         APP_NAME = "shopping-agent"
+        logger.info(f"Initializing services for app: {APP_NAME}")
         SESSION_SERVICE = InMemorySessionService()
+        logger.info("InMemorySessionService initialized")
         ARTIFACT_SERVICE = InMemoryArtifactService()
+        logger.info("InMemoryArtifactService initialized")
 
+        logger.info("Creating Runner instance")
         RUNNER = Runner(
             app_name=APP_NAME,
             agent=ROOT_AGENT,
             artifact_service=ARTIFACT_SERVICE,
             session_service=SESSION_SERVICE,
         )
+        logger.info("Runner created successfully")
 
         user_id = req.session_id or f"semanticpay_user-{str(uuid.uuid4())}"
+        logger.info(f"User ID: {user_id}")
+        
+        logger.info("Creating session")
         session = await SESSION_SERVICE.create_session(
             state={}, app_name=APP_NAME, user_id=user_id
         )
+        logger.info(f"Session created with ID: {session.id}")
 
         # Build full conversation context from chat history
+        logger.info("Building conversation context from chat history")
         full_context = ""
         if req.chat_history:
-            for msg in req.chat_history:
+            logger.info(f"Processing {len(req.chat_history)} previous messages")
+            for idx, msg in enumerate(req.chat_history):
                 role_label = "user" if msg["role"] == "user" else "agent"
                 full_context += f"[{role_label}]: {msg['content']}\n"
+                logger.debug(f"Message {idx + 1} - {role_label}: {msg['content'][:100]}...")
+        else:
+            logger.info("No previous chat history")
 
         # Add current question
         full_context += f"[user]: {req.question}"
+        logger.info("Current question added to context")
 
         query = full_context
-        print("[user]: ", req.question)
-        print("[full context being sent]: ", query)
+        logger.info(f"[user]: {req.question}")
+        logger.debug(f"[full context being sent]: {query}")
+        logger.info("Full context prepared for agent")
+        logger.debug(f"Full context length: {len(query)} characters")
+        
+        logger.info("Creating content object for agent")
         content = types.Content(role="user", parts=[types.Part(text=query)])
+        logger.info("Content object created")
 
+        logger.info("Starting async runner execution")
         events_async = RUNNER.run_async(
             session_id=session.id, user_id=user_id, new_message=content
         )
+        logger.info("Runner started, processing events stream")
 
         full_response = ""
-        func_payloads = [] 
+        func_payloads = []
+        event_count = 0
 
         # Results Handling
         # print(events_async)
+        logger.info("Beginning event stream processing")
         async for event in events_async:
+            event_count += 1
+            logger.debug(f"Processing event {event_count}")
             # {'error': 'Function activities_agent is not found in the tools_dict.'}
             if not event.content or not event.content or not event.content.parts:
+                logger.debug("Skipping event with no content or parts")
                 continue
 
             # print(event)
             author = event.author
+            logger.debug(f"Event from author: {author}")
             # Uncomment this to see the full event payload
             # print(f"\n[{author}]: {json.dumps(event)}")
 
+            logger.debug("Extracting function calls and responses from event")
             function_calls = [
                 e.function_call for e in event.content.parts if e.function_call
             ]
             function_responses = [
                 e.function_response for e in event.content.parts if e.function_response
             ]
+            logger.debug(f"Found {len(function_calls)} function call(s) and {len(function_responses)} function response(s)")
 
             if event.content.parts[0].text:
                 text_response = event.content.parts[0].text
-                print(f"\n[{author}]: {text_response}")
+                logger.info(f"[{author}]: {text_response}")
                 full_response += text_response
 
             for func_call in function_calls:
-                print(
-                    f"\n FUNC CALLS: [{author}]: {func_call.name}( {json.dumps(func_call.args)} )"
-                )
+                logger.info(f"FUNC CALLS: [{author}]: {func_call.name}({json.dumps(func_call.args)})")
+                
             for func_resp in function_responses:
+                func_payload = None
+
                 if func_resp.response is None:
-                    print("func response is empty...")
+                    logger.warning(f"Empty function response for {func_resp.name}")
                     continue
 
-                func_payload = json.loads(func_resp.response["result"].content[0].text)
-                print(f" FUNC RESPONSE: [{author}]: {func_resp.name} -> {func_payload}")
+                logger.info(f"Processing function response for {func_resp.name} - {func_resp.response}")
+                try:
+                    func_payload = json.loads(func_resp.response["result"].content[0].text)
+                    logger.info(f"FUNC RESPONSE: [{author}]: {func_resp.name} -> {json.dumps(func_payload, indent=2)}")
+                except Exception as e:
+                    logger.error(f"Error parsing function response JSON: {str(e)}")
 
-                func_payloads.append(FunctionPayload(
-                    name=func_resp.name or "UNKNOWN",
-                    payload=func_payload,
-                ))
-                    
-        print(f"\033[92m{full_response}\033[0m")
-        return AgentCallResponse(
+                if func_payload:
+                    func_payloads.append(FunctionPayload(
+                        name=func_resp.name or "UNKNOWN",
+                        payload=func_payload,
+                    ))
+                    logger.info(f"Added function payload for {func_resp.name}")
+        
+        logger.info(f"Event stream processing complete. Processed {event_count} events")
+        logger.info(f"Collected {len(func_payloads)} function payload(s)")
+        logger.info(f"Full response length: {len(full_response)} characters")
+        logger.info(f"Final response: {full_response}")
+        
+        logger.info("Creating AgentCallResponse")
+        response = AgentCallResponse(
             answer=full_response,
             function_payloads=func_payloads,
         )
+        logger.info("call_agent execution completed successfully")
+        logger.info("="*60)
+        
+        return response
+    except Exception as e:
+        logger.error(f"Error in call_agent: {str(e)}", exc_info=True)
+        raise
     finally:
         # Properly close the MCP connection to avoid async context issues
+        logger.info("Closing MCP server connection")
         await MCP_SERVER.close()
+        logger.info("MCP server connection closed")
 
 
 if __name__ == "__main__":
+    logger.info("Running agent in standalone mode")
     asyncio.run(call_agent(AgentCallRequest(question="i'm looking for a bag")))

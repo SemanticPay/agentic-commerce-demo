@@ -52,7 +52,17 @@ See Also:
 """
 
 import requests
+import logging
+import sys
 from typing import Dict, Any, Optional
+
+# Configure logging to stdout
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[logging.StreamHandler(sys.stdout)]
+)
+logger = logging.getLogger(__name__)
 
 # Support both relative imports (when imported as module) and absolute imports (when run directly)
 try:
@@ -142,6 +152,10 @@ class ShopifyGraphQLClient(StoreFrontClient):
             The access token should be a Storefront Access Token, not an Admin API
             token. These are different and have different permissions.
         """
+        logger.info("Initializing ShopifyGraphQLClient")
+        logger.info(f"Store URL: {store_url}")
+        logger.info(f"Access token provided: {bool(access_token)}")
+        
         self.store_url = store_url
         self.access_token = access_token
         self.headers = {
@@ -150,6 +164,9 @@ class ShopifyGraphQLClient(StoreFrontClient):
         
         if access_token:
             self.headers["X-Shopify-Storefront-Access-Token"] = access_token
+            logger.info("Access token added to headers")
+        
+        logger.info("ShopifyGraphQLClient initialized successfully")
     
     def _execute_query(self, query: str, variables: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """Execute a GraphQL query or mutation against Shopify's Storefront API.
@@ -195,31 +212,59 @@ class ShopifyGraphQLClient(StoreFrontClient):
             - All requests use POST method as required by GraphQL
             - Response is expected to be valid JSON
         """
+        logger.debug("Executing GraphQL query")
+        logger.debug(f"Variables: {variables}")
+        
         payload = {
             "query": query,
             "variables": variables or {}
         }
         
-        response = requests.post(
-            self.store_url,
-            headers=self.headers,
-            json=payload,
-            timeout=30
-        )
-        
-        response.raise_for_status()
-        data = response.json()
-        
-        if "errors" in data:
-            raise Exception(f"GraphQL errors: {data['errors']}")
+        try:
+            logger.info(f"Sending POST request to {self.store_url}")
+            response = requests.post(
+                self.store_url,
+                headers=self.headers,
+                json=payload,
+                timeout=30
+            )
+            logger.info(f"Received response with status code: {response.status_code}")
             
-        return data.get("data", {})
+            response.raise_for_status()
+            logger.debug("HTTP request successful")
+            
+            data = response.json()
+            logger.debug("Response parsed as JSON")
+            
+            if "errors" in data:
+                logger.error(f"GraphQL errors in response: {data['errors']}")
+                raise Exception(f"GraphQL errors: {data['errors']}")
+            
+            logger.debug("GraphQL query executed successfully")
+            return data.get("data", {})
+            
+        except requests.Timeout as e:
+            logger.error("Request timed out after 30 seconds", exc_info=True)
+            raise
+        except requests.HTTPError as e:
+            logger.error(f"HTTP error occurred: {e}", exc_info=True)
+            raise
+        except Exception as e:
+            logger.error(f"Error executing GraphQL query: {str(e)}", exc_info=True)
+            raise
     
     def search_products(
         self,
         req: SearchProductsRequest
     ) -> SearchProductsResponse:
         """Search for products in the Shopify store catalog.
+        
+        logger.info("="*60)
+        logger.info("search_products called")
+        logger.info(f"Query: '{req.query}'")
+        logger.info(f"First: {req.first}")
+        logger.info(f"Sort key: {req.sort_key}")
+        logger.info(f"Reverse: {req.reverse}")
         
         Executes a product search query using Shopify's GraphQL Storefront API,
         retrieving products that match the search criteria with full details
@@ -329,41 +374,62 @@ class ShopifyGraphQLClient(StoreFrontClient):
             "reverse": req.reverse
         }
         
+        logger.info(f"Capped 'first' to {variables['first']} (Shopify max: 250)")
+        
         try:
+            logger.info("Executing product search GraphQL query")
             data = self._execute_query(graphql_query, variables)
+            logger.info("Product search query executed successfully")
+            
             products: list[Product] = []
+            edges = data.get("products", {}).get("edges", [])
+            logger.info(f"Processing {len(edges)} product(s) from response")
 
-            for edge in data.get("products", {}).get("edges", []):
+            for idx, edge in enumerate(edges):
                 product = edge["node"]
+                logger.debug(f"Processing product {idx + 1}/{len(edges)}: {product.get('title')}")
                 
                 # Format images
                 images = []
                 for img_edge in product.get("images", {}).get("edges", []):
                     images.append(img_edge["node"]["url"])
                 product["images"] = images
+                logger.debug(f"Formatted {len(images)} image(s)")
                 
                 # Format variants
                 variants = []
                 for var_edge in product.get("variants", {}).get("edges", []):
                     variants.append(var_edge["node"])
                 product["variants"] = variants
+                logger.debug(f"Formatted {len(variants)} variant(s)")
 
                 # For single variant products, simplify the structure but keep at least one variant
                 if len(product.get("variants", [])) <= 1:
                     price = product.get("priceRange").get("minVariantPrice")
                     product["price"] = price
                     product.pop("priceRange")
+                    logger.debug("Simplified price structure for single-variant product")
                 
                 products.append(Product(**product))
+                logger.debug(f"Product {idx + 1} processed and added to list")
             
+            logger.info(f"Successfully processed {len(products)} product(s)")
+            logger.info("="*60)
             return SearchProductsResponse(products=products)
             
         except Exception as e:
+            logger.error(f"Failed to search products: {str(e)}", exc_info=True)
             raise Exception(f"Failed to search products: {str(e)}")
 
 
     def cart_create(self, req: CartCreateRequest) -> CartCreateResponse:
         """Create a new shopping cart in the Shopify store.
+        
+        logger.info("="*60)
+        logger.info("cart_create called")
+        logger.info(f"Lines count: {len(req.lines) if req.lines else 0}")
+        logger.info(f"Buyer identity provided: {bool(req.buyerIdentity)}")
+        logger.info(f"Delivery info provided: {bool(req.delivery)}")
         
         Creates a cart using Shopify's cartCreate mutation, optionally including
         initial line items, buyer identification, and delivery address preferences.
@@ -541,14 +607,44 @@ class ShopifyGraphQLClient(StoreFrontClient):
             "input": req.model_dump(exclude_none=True, by_alias=True)
         }
         
+        logger.info("Prepared cart creation variables")
+        logger.debug(f"Variables: {variables}")
+        
         try:
+            logger.info("Executing cart creation GraphQL mutation")
             data = self._execute_query(graphql_mutation, variables)
+            logger.info("Cart creation mutation executed successfully")
+            
             cart_create_data = data.get("cartCreate", {})
 
             cart_data = cart_create_data.get("cart", {})
             user_errors = cart_create_data.get("userErrors", [])
             warnings = cart_create_data.get("warnings", [])
             
+            if user_errors:
+                logger.warning(f"Cart creation returned {len(user_errors)} user error(s)")
+                for error in user_errors:
+                    logger.warning(f"User error: {error.get('message')} (field: {error.get('field')})")
+            
+            if warnings:
+                logger.info(f"Cart creation returned {len(warnings)} warning(s)")
+                for warning in warnings:
+                    logger.info(f"Warning: {warning.get('message')}")
+            
+            if cart_data:
+                logger.info(f"Cart created with ID: {cart_data.get('id')}")
+                logger.info(f"Cart total quantity: {cart_data.get('totalQuantity')}")
+                logger.info(f"Checkout URL: {cart_data.get('checkoutUrl')}")
+                cost = cart_data.get('cost', {})
+                if cost:
+                    subtotal = cost.get('subtotalAmount', {})
+                    total = cost.get('totalAmount', {})
+                    logger.info(f"Subtotal: {subtotal.get('amount')} {subtotal.get('currencyCode')}")
+                    logger.info(f"Total: {total.get('amount')} {total.get('currencyCode')}")
+            else:
+                cart_data = {}
+            
+            logger.info("="*60)
             return CartCreateResponse(
                 cart=Cart(**cart_data),
                 userErrors=user_errors,
@@ -556,11 +652,16 @@ class ShopifyGraphQLClient(StoreFrontClient):
             )
             
         except Exception as e:
+            logger.error(f"Failed to create cart: {str(e)}", exc_info=True)
             raise Exception(f"Failed to create cart: {str(e)}")
 
 
     def cart_get(self, req: CartGetRequest) -> CartGetResponse:
         """Retrieve an existing shopping cart by its unique identifier.
+        
+        logger.info("="*60)
+        logger.info("cart_get called")
+        logger.info(f"Cart ID: {req.id}")
         
         Fetches the current state of a previously created cart from Shopify,
         including all items, quantities, pricing, and checkout information.
@@ -630,15 +731,31 @@ class ShopifyGraphQLClient(StoreFrontClient):
         }
 
         try:
+            logger.info("Executing cart retrieval GraphQL query")
             data = self._execute_query(graphql_query, variables)
+            logger.info("Cart retrieval query executed successfully")
+            
             cart_data = data.get("cart")
             
             if cart_data is None:
-                raise Exception(f"Cart with id {id} not found")
+                logger.error(f"Cart with id {req.id} not found")
+                raise Exception(f"Cart with id {req.id} not found")
             
+            logger.info(f"Cart retrieved with ID: {cart_data.get('id')}")
+            logger.info(f"Cart total quantity: {cart_data.get('totalQuantity')}")
+            logger.info(f"Checkout URL: {cart_data.get('checkoutUrl')}")
+            cost = cart_data.get('cost', {})
+            if cost:
+                subtotal = cost.get('subtotalAmount', {})
+                total = cost.get('totalAmount', {})
+                logger.info(f"Subtotal: {subtotal.get('amount')} {subtotal.get('currencyCode')}")
+                logger.info(f"Total: {total.get('amount')} {total.get('currencyCode')}")
+            
+            logger.info("="*60)
             return CartGetResponse(cart=Cart(**cart_data))
             
         except Exception as e:
+            logger.error(f"Failed to get cart: {str(e)}", exc_info=True)
             raise Exception(f"Failed to get cart: {str(e)}")
 
 
@@ -649,21 +766,30 @@ if __name__ == "__main__":
     Tests product search, cart creation, and cart retrieval in sequence.
     Uses the default store configuration for testing purposes.
     """
+    logger.info("="*60)
+    logger.info("Starting Shopify client integration tests")
+    logger.info("="*60)
+    
     client = ShopifyGraphQLClient(store_url="https://huescorner.myshopify.com/api/2025-10/graphql.json")
     
     # Test 1: Search for products
+    logger.info("TEST 1: Product Search")
     print("=== Product Search Test ===")
     search_resp = client.search_products(SearchProductsRequest(query="bag", first=10))
     print(f"Found {len(search_resp.products)} products")
+    logger.info(f"Product search test completed: {len(search_resp.products)} products found")
     for prod in search_resp.products:
         print(f"{prod.model_dump_json()}")
     print()
     
     # Test 2: Create cart with first available variant
+    logger.info("TEST 2: Cart Creation")
     print("=== Cart Creation Test ===")
     lines = []
     for product in search_resp.products:
         lines.append(CartLineInput(merchandiseId=product.variants[0].id, quantity=1))
+    
+    logger.info(f"Prepared {len(lines)} line items for cart")
     
     if lines:
         cart_req = CartCreateRequest(
@@ -694,21 +820,29 @@ if __name__ == "__main__":
         if cart_resp.user_errors or cart_resp.warnings:
             print(f"Errors: {[e.message for e in cart_resp.user_errors]}")
             print(f"Warnings: {[w.message for w in cart_resp.warnings]}")
+            logger.warning("Cart creation completed with errors or warnings")
         else:
             print(f"Cart created: {cart_resp.cart.id}")
             print(f"Total: ${cart_resp.cart.cost.total_amount.amount}")
             print("Cart:")
             print(cart_resp.cart.model_dump_json())
             print()
+            logger.info("Cart creation test completed successfully")
             
             # Test 3: Retrieve cart
+            logger.info("TEST 3: Cart Retrieval")
             print("=== Cart Retrieval Test ===")
             get_resp = client.cart_get(CartGetRequest(id=cart_resp.cart.id))
             print(f"Retrieved cart with {get_resp.cart.total_quantity} items")
             print("Cart:")
             print(get_resp.cart.model_dump_json())
+            logger.info("Cart retrieval test completed successfully")
     else:
         print("No products with variants found for testing")
+        logger.warning("No products with variants available for cart creation test")
     
     print("\n=== Tests Complete ===")
+    logger.info("="*60)
+    logger.info("All integration tests completed")
+    logger.info("="*60)
 

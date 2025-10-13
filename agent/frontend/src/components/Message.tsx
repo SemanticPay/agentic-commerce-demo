@@ -1,5 +1,6 @@
 import React from 'react'
 import { ChatMessage } from '../types'
+import WidgetRenderer from './WidgetRenderer'
 
 interface MessageProps {
   message: ChatMessage
@@ -14,18 +15,13 @@ const Message: React.FC<MessageProps> = ({ message }) => {
         {message.content}
       </div>
 
-    {/* {message.widgets && message.widgets.map((widget, index) => (
-      // <div key={index} dangerouslySetInnerHTML={{ __html: widget }} />
-      <div>Hello!</div>
-    ))} */}
-
-      {message.widgets?.map((widget, index) => {
-        console.log('Widget:', widget)
-        return (
-          // <div key={index} dangerouslySetInnerHTML={{ __html: widget }} />
-          <div key={index}>Hello</div>
-        )
-      })}
+      {message.widgets && message.widgets.length > 0 && (
+        <div className="message-widgets">
+          {message.widgets.map((widget, index) => (
+            <WidgetRenderer key={index} widget={widget} />
+          ))}
+        </div>
+      )}
     </div>
   )
 }

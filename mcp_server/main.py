@@ -107,6 +107,10 @@ See Also:
     - Base type definitions: mcp_server/base_types.py
 """
 
+import logging
+import sys
+from datetime import datetime
+
 from fastmcp import FastMCP
 from mcp_server.base_types import (
     Price,
@@ -118,16 +122,28 @@ from mcp_server.client.base_types import Address, AddressOption, BuyerIdentity, 
 from mcp_server.client.factory import get_storefront_client
 from mcp_server.client.interface import StoreFrontClient
 
+# Configure logging to stdout
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[logging.StreamHandler(sys.stdout)]
+)
+logger = logging.getLogger(__name__)
+
 
 # Initialize MCP server
+logger.info("Initializing SemanticPay Shopping Server")
 mcp = FastMCP("SemanticPay Shopping Server")
+logger.info("MCP server initialized successfully")
 
 # Initialize storefront client with Shopify
 # To use a different store, modify the provider and kwargs here
+logger.info("Initializing Shopify storefront client")
 storefront_client: StoreFrontClient = get_storefront_client(
     provider=StoreProvider.SHOPIFY,
     store_url="https://huescorner.myshopify.com/api/2025-10/graphql.json",
 )
+logger.info("Storefront client initialized successfully")
 
 @mcp.tool(
     name="search_products",
@@ -246,23 +262,38 @@ def search_products(query: str = "") -> ProductList:
         - Image URL can be displayed to user or embedded in rich responses
         - Return type is ProductList containing a list, not a direct list
     """
-    resp = storefront_client.search_products(SearchProductsRequest(query=query)) 
+    logger.info(f"search_products called with query: '{query}'")
+    
+    try:
+        logger.info("Sending search request to storefront client")
+        resp = storefront_client.search_products(SearchProductsRequest(query=query))
+        logger.info(f"Received response with {len(resp.products)} products")
 
-    prod_list = ProductList()
-    for prod in resp.products:
-        for variant in prod.variants:
-            prod_list.products.append(Product(
-                id=variant.id,
-                title=f"{prod.title} - {variant.title}",
-                description=prod.description,
-                image_url=prod.images[0],
-                price=Price(
-                    amount=variant.price.amount,
-                    currency_code=variant.price.currency_code,
-                ),
-            ))
+        prod_list = ProductList()
+        logger.info("Processing products and variants")
+        
+        for idx, prod in enumerate(resp.products):
+            logger.debug(f"Processing product {idx + 1}/{len(resp.products)}: {prod.title}")
+            for variant_idx, variant in enumerate(prod.variants):
+                product = Product(
+                    id=variant.id,
+                    title=f"{prod.title} - {variant.title}",
+                    description=prod.description,
+                    image_url=prod.images[0],
+                    price=Price(
+                        amount=variant.price.amount,
+                        currency_code=variant.price.currency_code,
+                    ),
+                )
+                prod_list.products.append(product)
+                logger.debug(f"Added variant {variant_idx + 1}: {product.title} - {product.price.amount} {product.price.currency_code}")
 
-    return prod_list
+        logger.info(f"Successfully processed {len(prod_list.products)} product variants")
+        return prod_list
+    
+    except Exception as e:
+        logger.error(f"Error in search_products: {str(e)}", exc_info=True)
+        raise
 
 @mcp.tool(
     name="cart_create",
@@ -501,61 +532,87 @@ def cart_create(
         - Checkout URL is a direct link - user doesn't need to log in
         - Prices and availability are validated at creation time
     """
-    lines = []
-    for item_id, quantity in item_id_to_quantity.items():
-        lines.append(CartLineInput(
-            quantity=quantity,
-            merchandiseId=item_id,
+    logger.info("cart_create called")
+    logger.info(f"Items requested: {len(item_id_to_quantity)} product(s)")
+    logger.info(f"Buyer email: {buyer_email}")
+    logger.info(f"Delivery to: {delivery_address_first_name} {delivery_address_last_name}, {delivery_address_city}, {delivery_address_country_code}")
+    
+    try:
+        logger.info("Building cart line items")
+        lines = []
+        for item_id, quantity in item_id_to_quantity.items():
+            lines.append(CartLineInput(
+                quantity=quantity,
+                merchandiseId=item_id,
+            ))
+            logger.debug(f"Added line item: {item_id} (qty: {quantity})")
+        logger.info(f"Created {len(lines)} cart line item(s)")
+
+        logger.info("Building buyer identity")
+        buyer_identity = BuyerIdentity(
+            email=buyer_email,
+            phone=buyer_phone,
+        )
+        logger.info("Buyer identity created successfully")
+
+        logger.info("Building delivery address")
+        delivery = CartDeliveryInput(
+            addresses=[
+                AddressOption(
+                    selected=True,
+                    address=CartAddressInput(
+                        deliveryAddress=Address(
+                            city=delivery_address_city,
+                            countryCode=delivery_address_country_code,
+                            firstName=delivery_address_first_name,
+                            lastName=delivery_address_last_name,
+                            address1=delivery_address_line1,
+                            address2=delivery_address_line2,
+                            zip=delivery_address_zip,
+                            phone=delivery_address_phone, 
+                        ),
+                    )
+                ),
+            ]    
+        )
+        logger.info("Delivery address created successfully")
+
+        logger.info("Sending cart creation request to storefront client")
+        resp = storefront_client.cart_create(req=CartCreateRequest(
+            lines=lines,
+            buyerIdentity=buyer_identity,
+            delivery=delivery,
         ))
+        logger.info("Cart created successfully on storefront")
 
-    buyer_identity = BuyerIdentity(
-        email=buyer_email,
-        phone=buyer_phone,
-    )
-
-    delivery = CartDeliveryInput(
-        addresses=[
-            AddressOption(
-                selected=True,
-                address=CartAddressInput(
-                    deliveryAddress=Address(
-                        city=delivery_address_city,
-                        countryCode=delivery_address_country_code,
-                        firstName=delivery_address_first_name,
-                        lastName=delivery_address_last_name,
-                        address1=delivery_address_line1,
-                        address2=delivery_address_line2,
-                        zip=delivery_address_zip,
-                        phone=delivery_address_phone, 
-                    ),
-                )
+        logger.info("Building cart response object")
+        cart = Cart(
+            checkout_url=resp.cart.checkout_url, 
+            subtotal_amount=Price(
+                amount=resp.cart.cost.subtotal_amount.amount,
+                currency_code=resp.cart.cost.subtotal_amount.currency_code,
             ),
-        ]    
-    )
+            tax_amount=Price(
+                amount=resp.cart.cost.total_tax_amount.amount,
+                currency_code=resp.cart.cost.total_tax_amount.currency_code,
+            ) if resp.cart.cost.total_tax_amount else None,
+            total_amount=Price(
+                amount=resp.cart.cost.total_amount.amount,
+                currency_code=resp.cart.cost.total_amount.currency_code,
+            ),
+        )
+        
+        logger.info(f"Cart created - Subtotal: {cart.subtotal_amount.amount} {cart.subtotal_amount.currency_code}")
+        if cart.tax_amount:
+            logger.info(f"Tax: {cart.tax_amount.amount} {cart.tax_amount.currency_code}")
+        logger.info(f"Total: {cart.total_amount.amount} {cart.total_amount.currency_code}")
+        logger.info(f"Checkout URL: {cart.checkout_url}")
 
-    resp = storefront_client.cart_create(req=CartCreateRequest(
-        lines=lines,
-        buyerIdentity=buyer_identity,
-        delivery=delivery,
-    ))
-
-    cart = Cart(
-        checkout_url=resp.cart.checkout_url, 
-        subtotal_amount=Price(
-            amount=resp.cart.cost.subtotal_amount.amount,
-            currency_code=resp.cart.cost.subtotal_amount.currency_code,
-        ),
-        tax_amount=Price(
-            amount=resp.cart.cost.total_tax_amount.amount,
-            currency_code=resp.cart.cost.total_tax_amount.currency_code,
-        ) if resp.cart.cost.total_tax_amount else None,
-        total_amount=Price(
-            amount=resp.cart.cost.total_amount.amount,
-            currency_code=resp.cart.cost.total_amount.currency_code,
-        ),
-    )
-
-    return cart
+        return cart
+    
+    except Exception as e:
+        logger.error(f"Error in cart_create: {str(e)}", exc_info=True)
+        raise
 
 @mcp.tool(
     name="cart_get",
@@ -690,27 +747,47 @@ def cart_get(cart_id: str) -> Cart:
         - The checkout URL remains valid as long as the cart exists
         - Some platforms may update tax calculations when retrieving cart
     """
-    resp = storefront_client.cart_get(req=CartGetRequest(id=cart_id))
+    logger.info(f"cart_get called with cart_id: {cart_id}")
+    
+    try:
+        logger.info("Sending cart retrieval request to storefront client")
+        resp = storefront_client.cart_get(req=CartGetRequest(id=cart_id))
+        logger.info("Cart retrieved successfully from storefront")
 
-    cart = Cart(
-        checkout_url=resp.cart.checkout_url, 
-        subtotal_amount=Price(
-            amount=resp.cart.cost.subtotal_amount.amount,
-            currency_code=resp.cart.cost.subtotal_amount.currency_code,
-        ),
-        tax_amount=Price(
-            amount=resp.cart.cost.total_tax_amount.amount,
-            currency_code=resp.cart.cost.total_tax_amount.currency_code,
-        ) if resp.cart.cost.total_tax_amount else None,
-        total_amount=Price(
-            amount=resp.cart.cost.total_amount.amount,
-            currency_code=resp.cart.cost.total_amount.currency_code,
-        ),
-    )
+        logger.info("Building cart response object")
+        cart = Cart(
+            checkout_url=resp.cart.checkout_url, 
+            subtotal_amount=Price(
+                amount=resp.cart.cost.subtotal_amount.amount,
+                currency_code=resp.cart.cost.subtotal_amount.currency_code,
+            ),
+            tax_amount=Price(
+                amount=resp.cart.cost.total_tax_amount.amount,
+                currency_code=resp.cart.cost.total_tax_amount.currency_code,
+            ) if resp.cart.cost.total_tax_amount else None,
+            total_amount=Price(
+                amount=resp.cart.cost.total_amount.amount,
+                currency_code=resp.cart.cost.total_amount.currency_code,
+            ),
+        )
+        
+        logger.info(f"Cart retrieved - Subtotal: {cart.subtotal_amount.amount} {cart.subtotal_amount.currency_code}")
+        if cart.tax_amount:
+            logger.info(f"Tax: {cart.tax_amount.amount} {cart.tax_amount.currency_code}")
+        logger.info(f"Total: {cart.total_amount.amount} {cart.total_amount.currency_code}")
+        logger.info(f"Checkout URL: {cart.checkout_url}")
 
-    return cart
+        return cart
+    
+    except Exception as e:
+        logger.error(f"Error in cart_get: {str(e)}", exc_info=True)
+        raise
 
 
 if __name__ == "__main__":
+    logger.info("="*60)
+    logger.info("Starting SemanticPay MCP Shopping Server")
+    logger.info("="*60)
     print()
+    logger.info("Running MCP server on http://0.0.0.0:8000")
     mcp.run(transport="http", host="0.0.0.0", port=8000)
