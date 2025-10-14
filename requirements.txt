@@ -137,6 +137,7 @@ sse-starlette==3.0.2
 starlette==0.48.0
 tenacity==8.5.0
 tomlkit==0.13.3
+types-requests==2.32.4.20250913
 typing-inspection==0.4.1
 typing_extensions==4.15.0
 tzlocal==5.3.1
