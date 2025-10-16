@@ -8,6 +8,7 @@ import uuid
 from datetime import datetime
 import logging
 import sys
+import time
 
 try:
     from .agent import call_agent
@@ -127,13 +128,24 @@ async def query_agent(request: QueryRequest):
 
         # Call the agent with full context
         logger.info("Calling agent with question and context")
-        agent_resp = await call_agent(
-            req=AgentCallRequest(
-                question=request.question,
-                chat_history=history_dicts,
-                session_id=session_id,
-            ),
-        )
+
+        while True:
+            logger.info("Invoking call_agent function")
+            agent_resp = await call_agent(
+                req=AgentCallRequest(
+                    question=request.question,
+                    chat_history=history_dicts,
+                    session_id=session_id,
+                ),
+            )
+
+            if not agent_resp.answer and not agent_resp.function_payloads:
+                logger.warning("Agent returned no answer and no function payloads, retrying...")
+                time.sleep(1)  # Brief pause before retrying
+            else:
+                logger.info("Agent returned a valid response")
+                break
+
         logger.info("Agent response received")
         logger.info(f"Agent answer: {agent_resp.answer if agent_resp else 'No response'}")
         logger.info(f"Function payloads count: {len(agent_resp.function_payloads) if agent_resp.function_payloads else 0}")
