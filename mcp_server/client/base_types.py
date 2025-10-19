@@ -674,6 +674,6 @@ class CartCreateResponse(BaseModel):
         ...     warnings=[]
         ... )
     """
-    cart: Cart
+    cart: Cart | None = None
     user_errors: list[UserError] = Field(default=[], alias="userErrors")
     warnings: list[CartWarning] = Field(default=[])

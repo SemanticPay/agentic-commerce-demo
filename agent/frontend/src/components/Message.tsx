@@ -1,4 +1,5 @@
 import React from 'react'
+import ReactMarkdown from 'react-markdown'
 import { ChatMessage } from '../types'
 import WidgetRenderer from './WidgetRenderer'
 
@@ -12,7 +13,7 @@ const Message: React.FC<MessageProps> = ({ message }) => {
   return (
     <div className={`message ${messageClass}`}>
       <div className="message-content">
-        {message.content}
+        <ReactMarkdown>{message.content}</ReactMarkdown>
       </div>
 
       {message.widgets && message.widgets.length > 0 && (

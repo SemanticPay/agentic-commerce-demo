@@ -642,11 +642,17 @@ class ShopifyGraphQLClient(StoreFrontClient):
                     logger.info(f"Subtotal: {subtotal.get('amount')} {subtotal.get('currencyCode')}")
                     logger.info(f"Total: {total.get('amount')} {total.get('currencyCode')}")
             else:
+                logger.info("No cart data returned")
                 cart_data = {}
             
             logger.info("="*60)
+
+            cart = None
+            if cart_data:
+                cart = Cart(**cart_data)
+
             return CartCreateResponse(
-                cart=Cart(**cart_data),
+                cart=cart,
                 userErrors=user_errors,
                 warnings=warnings
             )

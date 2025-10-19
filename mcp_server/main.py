@@ -585,6 +585,15 @@ def cart_create(
         ))
         logger.info("Cart created successfully on storefront")
 
+        if resp.user_errors:
+            raise Exception(f"User errors during cart creation: {resp.user_errors}")
+
+        if resp.warnings:
+            logger.warning(f"Warnings during cart creation: {resp.warnings}")
+
+        if not resp.cart:
+            raise Exception("No cart data returned from storefront")
+
         logger.info("Building cart response object")
         cart = Cart(
             checkout_url=resp.cart.checkout_url, 

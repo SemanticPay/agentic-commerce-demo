@@ -8,6 +8,7 @@ import uuid
 from datetime import datetime
 import logging
 import sys
+import time
 
 try:
     from .agent import call_agent
@@ -125,21 +126,31 @@ async def query_agent(request: QueryRequest):
                 history_dicts.append(msg)
         logger.info(f"Converted {len(history_dicts)} messages")
 
-        # Extract products data from session history
+        # Call the agent with full context
         logger.info("Extracting products data from session history")
         products_data = extract_products_from_session(sessions[session_id])
         logger.info(f"Found {len(products_data)} products in session history")
-
-        # Call the agent with full context including products data
         logger.info("Calling agent with question, context, and products data")
-        agent_resp = await call_agent(
-            req=AgentCallRequest(
-                question=request.question,
-                chat_history=history_dicts,
-                session_id=session_id,
-                products_data=products_data,
-            ),
-        )
+
+        while True:
+            logger.info("Invoking call_agent function")
+            agent_resp = await call_agent(
+                req=AgentCallRequest(
+                    question=request.question,
+                    chat_history=history_dicts,
+                    session_id=session_id,
+                    products_data=products_data,
+
+                ),
+            )
+
+            if not agent_resp.answer and not agent_resp.function_payloads:
+                logger.warning("Agent returned no answer and no function payloads, retrying...")
+                time.sleep(1)  # Brief pause before retrying
+            else:
+                logger.info("Agent returned a valid response")
+                break
+
         logger.info("Agent response received")
         logger.info(f"Agent answer: {agent_resp.answer if agent_resp else 'No response'}")
         logger.info(f"Function payloads count: {len(agent_resp.function_payloads) if agent_resp.function_payloads else 0}")
@@ -214,16 +225,16 @@ def extract_products_from_session(session_messages: List[ChatMessage]) -> List[d
     """
     Extract products data from session messages by looking for function payloads
     that contain product search results.
-    
+
     Args:
         session_messages: List of chat messages in the session
-        
+
     Returns:
         List of product dictionaries found in the session
     """
     logger.info("Extracting products from session messages")
     products_data = []
-    
+
     for msg in session_messages:
         if msg.role == "agent" and msg.function_payloads:
             # Look for search_products function payloads
@@ -232,7 +243,7 @@ def extract_products_from_session(session_messages: List[ChatMessage]) -> List[d
                     products = payload.payload.get("products", [])
                     products_data.extend(products)
                     logger.debug(f"Found {len(products)} products in message")
-    
+
     logger.info(f"Total products extracted: {len(products_data)}")
     return products_data
 
