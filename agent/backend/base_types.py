@@ -22,7 +22,6 @@ class ChatMessage(BaseModel):
     role: str  # "user" or "agent"
     content: str
     timestamp: Optional[str] = None
-    function_payloads: Optional[List[FunctionPayload]] = None
 
 
 class QueryRequest(BaseModel):
