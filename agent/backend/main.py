@@ -169,7 +169,6 @@ async def query_agent(request: QueryRequest):
             role="agent",
             content=agent_resp.answer if agent_resp else "No response generated",
             timestamp=current_time,
-            function_payloads=agent_resp.function_payloads if agent_resp else None,
         )
         sessions[session_id].append(agent_message)
         logger.info("Agent message added to session")
@@ -183,7 +182,6 @@ async def query_agent(request: QueryRequest):
             session_id=session_id,
             updated_chat_history=sessions[session_id],
             widgets=widgets,
-            products_data=products_data
         )
         logger.info("Query completed successfully")
         logger.info("="*60)
@@ -230,15 +228,14 @@ def extract_products_from_session(func_payloads: list[FunctionPayload]) -> List:
             products = func_payload.payload.get("products", [])
             for prod_idx, prod in enumerate(products):
                 if prod:
-                    products_data.append(create_product_widget(
-                        {
+                    products_data.append({
                             "id": prod.get("id"),
                             "title": prod.get("title"),
                             "description": prod.get("description"),
                             "price": prod.get("price", {}).get("amount"),
                             "currency": prod.get("price", {}).get("currency_code"),
                             "image_url": prod.get("image_url"),
-                        }))
+                        })
 
     return products_data
 
