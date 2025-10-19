@@ -89,7 +89,7 @@ async def query_agent(request: QueryRequest):
         request: QueryRequest containing the user's question, optional session_id, and chat_history
 
     Returns:
-        QueryResponse with the agent's answer and updated chat history
+        QueryResponse with the agent's answer and updated chat history and products details
     """
     logger.info("="*60)
     logger.info("Query endpoint called")
@@ -126,12 +126,7 @@ async def query_agent(request: QueryRequest):
                 history_dicts.append(msg)
         logger.info(f"Converted {len(history_dicts)} messages")
 
-        # Call the agent with full context
-        logger.info("Extracting products data from session history")
-        products_data = extract_products_from_session(sessions[session_id])
-        logger.info(f"Found {len(products_data)} products in session history")
         logger.info("Calling agent with question, context, and products data")
-
         while True:
             logger.info("Invoking call_agent function")
             agent_resp = await call_agent(
@@ -139,8 +134,6 @@ async def query_agent(request: QueryRequest):
                     question=request.question,
                     chat_history=history_dicts,
                     session_id=session_id,
-                    products_data=products_data,
-
                 ),
             )
 
@@ -157,6 +150,7 @@ async def query_agent(request: QueryRequest):
 
         logger.info("Creating widgets from function payloads")
         widgets = create_widgets_from_function_payload(agent_resp.function_payloads)
+        products_data = extract_products_from_session(agent_resp.function_payloads)
         logger.info(f"Created {len(widgets)} widget(s)")
 
         # Update session with new messages
@@ -189,6 +183,7 @@ async def query_agent(request: QueryRequest):
             session_id=session_id,
             updated_chat_history=sessions[session_id],
             widgets=widgets,
+            products_data=products_data
         )
         logger.info("Query completed successfully")
         logger.info("="*60)
@@ -221,30 +216,30 @@ async def get_session_history(session_id: str):
     return {"session_id": session_id, "chat_history": sessions[session_id]}
 
 
-def extract_products_from_session(session_messages: List[ChatMessage]) -> List[dict]:
-    """
-    Extract products data from session messages by looking for function payloads
-    that contain product search results.
-
-    Args:
-        session_messages: List of chat messages in the session
-
-    Returns:
-        List of product dictionaries found in the session
-    """
-    logger.info("Extracting products from session messages")
+def extract_products_from_session(func_payloads: list[FunctionPayload]) -> List:
     products_data = []
 
-    for msg in session_messages:
-        if msg.role == "agent" and msg.function_payloads:
-            # Look for search_products function payloads
-            for payload in msg.function_payloads:
-                if payload.name == "search_products" and payload.payload:
-                    products = payload.payload.get("products", [])
-                    products_data.extend(products)
-                    logger.debug(f"Found {len(products)} products in message")
+    for idx, func_payload in enumerate(func_payloads):
+        if not func_payload or not func_payload.payload:
+            logger.debug(f"Skipping empty payload at index {idx}")
+            return products_data
 
-    logger.info(f"Total products extracted: {len(products_data)}")
+        logger.info(f"Processing function payload {idx + 1}: {func_payload.name}")
+
+        if func_payload.name == "search_products":
+            products = func_payload.payload.get("products", [])
+            for prod_idx, prod in enumerate(products):
+                if prod:
+                    products_data.append(create_product_widget(
+                        {
+                            "id": prod.get("id"),
+                            "title": prod.get("title"),
+                            "description": prod.get("description"),
+                            "price": prod.get("price", {}).get("amount"),
+                            "currency": prod.get("price", {}).get("currency_code"),
+                            "image_url": prod.get("image_url"),
+                        }))
+
     return products_data
 
 

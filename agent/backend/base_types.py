@@ -11,7 +11,6 @@ class AgentCallRequest(BaseModel):
     question: str
     chat_history: list[dict] = []
     session_id: str | None = None
-    products_data: list[dict] = Field(default_factory=list)
 
 
 class AgentCallResponse(BaseModel):
@@ -51,3 +50,4 @@ class QueryResponse(BaseModel):
     session_id: Optional[str] = None
     updated_chat_history: Optional[List[ChatMessage]] = []
     widgets: list[Any] = Field(default_factory=list)
+    products_data: list[dict] = []
