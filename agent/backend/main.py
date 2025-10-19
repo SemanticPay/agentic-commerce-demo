@@ -220,7 +220,7 @@ def extract_products_from_session(func_payloads: list[FunctionPayload]) -> List:
     for idx, func_payload in enumerate(func_payloads):
         if not func_payload or not func_payload.payload:
             logger.debug(f"Skipping empty payload at index {idx}")
-            return products_data
+            continue
 
         logger.info(f"Processing function payload {idx + 1}: {func_payload.name}")
 
