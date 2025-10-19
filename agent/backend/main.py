@@ -89,7 +89,7 @@ async def query_agent(request: QueryRequest):
         request: QueryRequest containing the user's question, optional session_id, and chat_history
 
     Returns:
-        QueryResponse with the agent's answer and updated chat history
+        QueryResponse with the agent's answer and updated chat history and products details
     """
     logger.info("="*60)
     logger.info("Query endpoint called")
@@ -126,9 +126,7 @@ async def query_agent(request: QueryRequest):
                 history_dicts.append(msg)
         logger.info(f"Converted {len(history_dicts)} messages")
 
-        # Call the agent with full context
-        logger.info("Calling agent with question and context")
-
+        logger.info("Calling agent with question, context, and products data")
         while True:
             logger.info("Invoking call_agent function")
             agent_resp = await call_agent(
@@ -152,6 +150,7 @@ async def query_agent(request: QueryRequest):
 
         logger.info("Creating widgets from function payloads")
         widgets = create_widgets_from_function_payload(agent_resp.function_payloads)
+        products_data = extract_products_from_session(agent_resp.function_payloads)
         logger.info(f"Created {len(widgets)} widget(s)")
 
         # Update session with new messages
@@ -165,7 +164,7 @@ async def query_agent(request: QueryRequest):
         sessions[session_id].append(user_message)
         logger.info("User message added to session")
 
-        # Add agent response
+        # Add agent response with function payloads
         agent_message = ChatMessage(
             role="agent",
             content=agent_resp.answer if agent_resp else "No response generated",
@@ -213,6 +212,32 @@ async def get_session_history(session_id: str):
 
     logger.info(f"Returning {len(sessions[session_id])} messages for session {session_id}")
     return {"session_id": session_id, "chat_history": sessions[session_id]}
+
+
+def extract_products_from_session(func_payloads: list[FunctionPayload]) -> List:
+    products_data = []
+
+    for idx, func_payload in enumerate(func_payloads):
+        if not func_payload or not func_payload.payload:
+            logger.debug(f"Skipping empty payload at index {idx}")
+            return products_data
+
+        logger.info(f"Processing function payload {idx + 1}: {func_payload.name}")
+
+        if func_payload.name == "search_products":
+            products = func_payload.payload.get("products", [])
+            for prod_idx, prod in enumerate(products):
+                if prod:
+                    products_data.append({
+                            "id": prod.get("id"),
+                            "title": prod.get("title"),
+                            "description": prod.get("description"),
+                            "price": prod.get("price", {}).get("amount"),
+                            "currency": prod.get("price", {}).get("currency_code"),
+                            "image_url": prod.get("image_url"),
+                        })
+
+    return products_data
 
 
 def create_widgets_from_function_payload(func_payloads: list[FunctionPayload]) -> List[Widget]:

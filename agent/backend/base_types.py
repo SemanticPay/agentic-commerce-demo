@@ -49,3 +49,4 @@ class QueryResponse(BaseModel):
     session_id: Optional[str] = None
     updated_chat_history: Optional[List[ChatMessage]] = []
     widgets: list[Any] = Field(default_factory=list)
+    products_data: list[dict] = []
