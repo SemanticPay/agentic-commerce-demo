@@ -11,6 +11,7 @@ class AgentCallRequest(BaseModel):
     question: str
     chat_history: list[dict] = []
     session_id: str | None = None
+    products_data: list[dict] = Field(default_factory=list)
 
 
 class AgentCallResponse(BaseModel):
@@ -22,6 +23,7 @@ class ChatMessage(BaseModel):
     role: str  # "user" or "agent"
     content: str
     timestamp: Optional[str] = None
+    function_payloads: Optional[List[FunctionPayload]] = None
 
 
 class QueryRequest(BaseModel):

@@ -101,6 +101,24 @@ async def call_agent(req: AgentCallRequest) -> AgentCallResponse:
         else:
             logger.info("No previous chat history")
 
+        # Add products data context if available
+        if req.products_data:
+            logger.info(f"Adding {len(req.products_data)} products to context")
+            products_context = "\n\n[AVAILABLE PRODUCTS DATA]:\n"
+            for idx, product in enumerate(req.products_data):
+                products_context += f"Product {idx + 1}:\n"
+                products_context += f"  - ID: {product.get('id', 'N/A')}\n"
+                products_context += f"  - Title: {product.get('title', 'N/A')}\n"
+                products_context += f"  - Description: {product.get('description', 'N/A')}\n"
+                products_context += f"  - Price: {product.get('price', {}).get('amount', 'N/A')} {product.get('price', {}).get('currency_code', 'N/A')}\n"
+                if product.get('images'):
+                    products_context += f"  - Images: {', '.join(product['images'][:3])}\n"  # Show first 3 images
+                products_context += "\n"
+            full_context += products_context
+            logger.info("Products data added to context")
+        else:
+            logger.info("No products data available")
+
         # Add current question
         full_context += f"[user]: {req.question}"
         logger.info("Current question added to context")

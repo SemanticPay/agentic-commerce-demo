@@ -125,13 +125,19 @@ async def query_agent(request: QueryRequest):
                 history_dicts.append(msg)
         logger.info(f"Converted {len(history_dicts)} messages")
 
-        # Call the agent with full context
-        logger.info("Calling agent with question and context")
+        # Extract products data from session history
+        logger.info("Extracting products data from session history")
+        products_data = extract_products_from_session(sessions[session_id])
+        logger.info(f"Found {len(products_data)} products in session history")
+
+        # Call the agent with full context including products data
+        logger.info("Calling agent with question, context, and products data")
         agent_resp = await call_agent(
             req=AgentCallRequest(
                 question=request.question,
                 chat_history=history_dicts,
                 session_id=session_id,
+                products_data=products_data,
             ),
         )
         logger.info("Agent response received")
@@ -153,11 +159,12 @@ async def query_agent(request: QueryRequest):
         sessions[session_id].append(user_message)
         logger.info("User message added to session")
 
-        # Add agent response
+        # Add agent response with function payloads
         agent_message = ChatMessage(
             role="agent",
             content=agent_resp.answer if agent_resp else "No response generated",
             timestamp=current_time,
+            function_payloads=agent_resp.function_payloads if agent_resp else None,
         )
         sessions[session_id].append(agent_message)
         logger.info("Agent message added to session")
@@ -201,6 +208,33 @@ async def get_session_history(session_id: str):
 
     logger.info(f"Returning {len(sessions[session_id])} messages for session {session_id}")
     return {"session_id": session_id, "chat_history": sessions[session_id]}
+
+
+def extract_products_from_session(session_messages: List[ChatMessage]) -> List[dict]:
+    """
+    Extract products data from session messages by looking for function payloads
+    that contain product search results.
+    
+    Args:
+        session_messages: List of chat messages in the session
+        
+    Returns:
+        List of product dictionaries found in the session
+    """
+    logger.info("Extracting products from session messages")
+    products_data = []
+    
+    for msg in session_messages:
+        if msg.role == "agent" and msg.function_payloads:
+            # Look for search_products function payloads
+            for payload in msg.function_payloads:
+                if payload.name == "search_products" and payload.payload:
+                    products = payload.payload.get("products", [])
+                    products_data.extend(products)
+                    logger.debug(f"Found {len(products)} products in message")
+    
+    logger.info(f"Total products extracted: {len(products_data)}")
+    return products_data
 
 
 def create_widgets_from_function_payload(func_payloads: list[FunctionPayload]) -> List[Widget]:
