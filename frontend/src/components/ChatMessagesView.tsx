@@ -1,15 +1,14 @@
 import type React from "react";
+import { useState, useEffect, ReactNode } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Loader2, Copy, CopyCheck } from "lucide-react";
 import { InputForm } from "@/components/InputForm";
 import { Button } from "@/components/ui/button";
-import { useState, ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
-import remarkGfm from 'remark-gfm';
+import remarkGfm from "remark-gfm";
 import { cn } from "@/utils";
 import { Badge } from "@/components/ui/badge";
-import { TypingIndicator } from "./TypingIndicator"
-
+import CheckoutModal from "./CheckoutModal"
 type MdComponentProps = {
   className?: string;
   children?: ReactNode;
@@ -21,6 +20,7 @@ interface ProcessedEvent {
   data: any;
 }
 
+// ✅ Markdown render components (including clickable image cards)
 const mdComponents = {
   h1: ({ className, children, ...props }: MdComponentProps) => (
     <h1 className={cn("text-2xl font-bold mt-4 mb-2", className)} {...props}>{children}</h1>
@@ -77,10 +77,36 @@ const mdComponents = {
   td: ({ className, children, ...props }: MdComponentProps) => (
     <td className={cn("border border-neutral-600 px-3 py-2", className)} {...props}>{children}</td>
   ),
+
+  img: ({ src, alt }) => (
+    <div
+      onClick={() => {
+        const event = new CustomEvent("chat-message", {
+          detail: { text: `Add item ${alt} to cart` }
+        });
+        window.dispatchEvent(event);
+      }}
+      className="p-2 inline-block bg-neutral-800 border border-neutral-600 rounded-xl 
+                 m-2 text-center w-[180px] cursor-pointer hover:border-blue-400 transition-all"
+    >
+      <img
+        src={src}
+        alt={alt}
+        className="object-cover h-[180px] w-full rounded-md mb-2"
+      />
+      <div className="text-xs text-neutral-300">{alt}</div>
+    </div>
+  ),
 };
 
 interface ChatMessagesViewProps {
-  messages: { type: "human" | "ai"; content: string; id: string; agent?: string; finalReportWithCitations?: boolean }[];
+  messages: {
+    type: "human" | "ai";
+    content: string;
+    id: string;
+    agent?: string;
+    finalReportWithCitations?: boolean;
+  }[];
   isLoading: boolean;
   scrollAreaRef: React.RefObject<HTMLDivElement | null>;
   onSubmit: (query: string) => void;
@@ -96,10 +122,18 @@ export function ChatMessagesView({
   scrollAreaRef,
   onSubmit,
   onCancel,
-  messageEvents,
-  websiteCount,
 }: ChatMessagesViewProps) {
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
+
+  // 🧠 Listen for synthetic "chat-message" events (like clicking product images)
+  useEffect(() => {
+    const handleSyntheticMessage = (e: any) => {
+      const text = e.detail?.text;
+      if (text) onSubmit(text);
+    };
+    window.addEventListener("chat-message", handleSyntheticMessage);
+    return () => window.removeEventListener("chat-message", handleSyntheticMessage);
+  }, [onSubmit]);
 
   const handleCopy = async (text: string, messageId: string) => {
     try {
@@ -113,41 +147,67 @@ export function ChatMessagesView({
 
   const handleNewChat = () => window.location.reload();
 
-
   return (
     <div className="flex flex-col h-full w-full">
+      {/* 🧭 Header */}
       <div className="border-b border-neutral-700 p-4 bg-neutral-800">
         <div className="max-w-4xl mx-auto flex justify-between items-center">
           <h1 className="text-lg font-semibold text-neutral-100">Shop</h1>
-          <Button onClick={handleNewChat} variant="outline" className="bg-neutral-700 hover:bg-neutral-600 text-neutral-100 border-neutral-600 hover:border-neutral-500">
+          <Button
+            onClick={handleNewChat}
+            variant="outline"
+            className="bg-neutral-700 hover:bg-neutral-600 text-neutral-100 
+                       border-neutral-600 hover:border-neutral-500"
+          >
             New Chat
           </Button>
         </div>
       </div>
-        <div className="flex-1 flex flex-col w-full overflow-hidden">
-          <ScrollArea ref={scrollAreaRef} className="flex-1 w-full overflow-y-auto max-h-[calc(100vh-160px)]">          <div className="p-4 md:p-6 space-y-2 max-w-4xl mx-auto">
-            {messages.map((message) => {
-              return (
-                <div key={message.id} className={`flex ${message.type === "human" ? "justify-end" : "justify-start"}`}>
-                  {message.type === "human" ? (
-                    <div className="text-white bg-neutral-700 px-4 pt-3 rounded-3xl break-words max-w-[100%] sm:max-w-[90%] rounded-br-lg">
-                      <ReactMarkdown components={mdComponents} remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown>
-                    </div>
-                  ) : (
-                    <div className="relative break-words flex flex-col w-full">
-                      <div className="flex items-start gap-3">
-                        <div className="flex-1">
-                          <ReactMarkdown components={mdComponents} remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown>
-                        </div>
-                        <button onClick={() => handleCopy(message.content, message.id)} className="p-1 hover:bg-neutral-700 rounded">
-                          {copiedMessageId === message.id ? <CopyCheck className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4 text-neutral-400" />}
-                        </button>
+
+      {/* 💬 Chat area */}
+      <div className="flex-1 flex flex-col w-full overflow-hidden">
+        <ScrollArea
+          ref={scrollAreaRef}
+          className="flex-1 w-full overflow-y-auto max-h-[calc(100vh-160px)]"
+        >
+          <div className="p-4 md:p-6 space-y-2 max-w-4xl mx-auto">
+            {messages.map((message) => (
+              <div
+                key={message.id}
+                className={`flex ${message.type === "human" ? "justify-end" : "justify-start"}`}
+              >
+                {message.type === "human" ? (
+                  <div className="text-white bg-neutral-700 px-4 pt-3 rounded-3xl 
+                                  break-words max-w-[100%] sm:max-w-[90%] rounded-br-lg">
+                    <ReactMarkdown components={mdComponents} remarkPlugins={[remarkGfm]}>
+                      {message.content}
+                    </ReactMarkdown>
+                  </div>
+                ) : (
+                  <div className="relative break-words flex flex-col w-full">
+                    <div className="flex items-start gap-3">
+                      <div className="flex-1">
+                        <ReactMarkdown components={mdComponents} remarkPlugins={[remarkGfm]}>
+                          {message.content}
+                        </ReactMarkdown>
                       </div>
+                      <button
+                        onClick={() => handleCopy(message.content, message.id)}
+                        className="p-1 hover:bg-neutral-700 rounded"
+                      >
+                        {copiedMessageId === message.id ? (
+                          <CopyCheck className="h-4 w-4 text-green-500" />
+                        ) : (
+                          <Copy className="h-4 w-4 text-neutral-400" />
+                        )}
+                      </button>
                     </div>
-                  )}
-                </div>
-              );
-            })}
+                  </div>
+                )}
+              </div>
+            ))}
+
+            {/* 🔄 Loading Indicator */}
             {isLoading && (
               <div className="flex justify-start pl-10 pt-2">
                 <div className="flex items-center gap-2 text-neutral-400">
@@ -159,12 +219,18 @@ export function ChatMessagesView({
           </div>
         </ScrollArea>
       </div>
+
+      {/* 🧾 Input section */}
       <div className="border-t border-neutral-700 p-4 w-full">
         <div className="max-w-3xl mx-auto">
           <InputForm onSubmit={onSubmit} isLoading={isLoading} context="chat" />
           {isLoading && (
             <div className="mt-4 flex justify-center">
-              <Button variant="outline" onClick={onCancel} className="text-red-400 hover:text-red-300">
+              <Button
+                variant="outline"
+                onClick={onCancel}
+                className="text-red-400 hover:text-red-300"
+              >
                 Cancel
               </Button>
             </div>

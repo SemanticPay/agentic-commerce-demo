@@ -206,7 +206,7 @@ export default function App() {
   const BackendLoadingScreen = () => (
     <div className="flex-1 flex flex-col items-center justify-center p-4">
       <div className="text-center space-y-6">
-        <h1 className="text-3xl font-bold">🛍️ Shopper Agent</h1>
+        <h1 className="text-3xl font-bold">🛍️ SemantikShopper</h1>
         <p>Connecting to backend...</p>
       </div>
     </div>
