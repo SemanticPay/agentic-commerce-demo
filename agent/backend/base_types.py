@@ -22,6 +22,7 @@ class ChatMessage(BaseModel):
     role: str  # "user" or "agent"
     content: str
     timestamp: Optional[str] = None
+    products: list | None = None
 
 
 class QueryRequest(BaseModel):

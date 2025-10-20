@@ -169,6 +169,7 @@ async def query_agent(request: QueryRequest):
             role="agent",
             content=agent_resp.answer if agent_resp else "No response generated",
             timestamp=current_time,
+            products=products_data,
         )
         sessions[session_id].append(agent_message)
         logger.info("Agent message added to session")
