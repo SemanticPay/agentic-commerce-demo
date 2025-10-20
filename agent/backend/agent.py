@@ -33,6 +33,43 @@ logger.info("Loading environment variables for agent")
 load_dotenv()
 logger.info("Environment variables loaded")
 
+logger.info("Initializing MCP server connection")
+MCP_SERVER = McpToolset(
+            connection_params=StreamableHTTPConnectionParams(
+                url="http://localhost:8000/mcp",
+            )
+        )
+logger.info("MCP server connection established at http://localhost:8000/mcp")
+
+logger.info("Creating ROOT_AGENT with Gemini 2.5 Flash model")
+ROOT_AGENT = Agent(
+            model="gemini-2.5-flash",
+            name="root_agent",
+            description="A shopping assistant agent",
+            instruction=ROOT_AGENT_INSTR,
+            tools=[
+                MCP_SERVER,
+            ],
+        )
+logger.info("ROOT_AGENT created successfully")
+
+APP_NAME = "shopping-agent"
+logger.info(f"Initializing services for app: {APP_NAME}")
+SESSION_SERVICE = InMemorySessionService()
+logger.info("InMemorySessionService initialized")
+ARTIFACT_SERVICE = InMemoryArtifactService()
+logger.info("InMemoryArtifactService initialized")
+
+logger.info("Creating Runner instance")
+RUNNER = Runner(
+            app_name=APP_NAME,
+            agent=ROOT_AGENT,
+            artifact_service=ARTIFACT_SERVICE,
+            session_service=SESSION_SERVICE,
+        )
+logger.info("Runner created successfully")
+
+user_id_to_session_id = {}
 
 async def call_agent(req: AgentCallRequest) -> AgentCallResponse:
     """Executes one turn of the shopping agent with a query and full chat context."""
@@ -43,51 +80,19 @@ async def call_agent(req: AgentCallRequest) -> AgentCallResponse:
     logger.info(f"Chat history length: {len(req.chat_history) if req.chat_history else 0}")
     
     try:
-        logger.info("Initializing MCP server connection")
-        MCP_SERVER = McpToolset(
-            connection_params=StreamableHTTPConnectionParams(
-                url="http://localhost:8000/mcp",
-            )
-        )
-        logger.info("MCP server connection established at http://localhost:8000/mcp")
-
-        logger.info("Creating ROOT_AGENT with Gemini 2.5 Flash model")
-        ROOT_AGENT = Agent(
-            model="gemini-2.5-flash",
-            name="root_agent",
-            description="A shopping assistant agent",
-            instruction=ROOT_AGENT_INSTR,
-            tools=[
-                MCP_SERVER,
-            ],
-        )
-        logger.info("ROOT_AGENT created successfully")
-
-
-        APP_NAME = "shopping-agent"
-        logger.info(f"Initializing services for app: {APP_NAME}")
-        SESSION_SERVICE = InMemorySessionService()
-        logger.info("InMemorySessionService initialized")
-        ARTIFACT_SERVICE = InMemoryArtifactService()
-        logger.info("InMemoryArtifactService initialized")
-
-        logger.info("Creating Runner instance")
-        RUNNER = Runner(
-            app_name=APP_NAME,
-            agent=ROOT_AGENT,
-            artifact_service=ARTIFACT_SERVICE,
-            session_service=SESSION_SERVICE,
-        )
-        logger.info("Runner created successfully")
-
-        user_id = req.session_id or f"semanticpay_user-{str(uuid.uuid4())}"
+        user_id = req.session_id
         logger.info(f"User ID: {user_id}")
-        
-        logger.info("Creating session")
-        session = await SESSION_SERVICE.create_session(
-            state={}, app_name=APP_NAME, user_id=user_id
-        )
-        logger.info(f"Session created with ID: {session.id}")
+
+        if user_id_to_session_id.get(user_id):
+            session_id = user_id_to_session_id[user_id]
+            logger.info(f"Session found with ID: {session_id}")
+        else:
+            logger.info("Creating session")
+            session = await SESSION_SERVICE.create_session(
+                state={}, app_name=APP_NAME, user_id=user_id
+            )
+            session_id = session.id
+            logger.info(f"Session created with ID: {session_id}")
 
         # Build full conversation context from chat history
         logger.info("Building conversation context from chat history")
@@ -117,7 +122,7 @@ async def call_agent(req: AgentCallRequest) -> AgentCallResponse:
 
         logger.info("Starting async runner execution")
         events_async = RUNNER.run_async(
-            session_id=session.id, user_id=user_id, new_message=content
+            session_id=session_id, user_id=user_id, new_message=content
         )
         logger.info("Runner started, processing events stream")
 
@@ -125,22 +130,16 @@ async def call_agent(req: AgentCallRequest) -> AgentCallResponse:
         func_payloads = []
         event_count = 0
 
-        # Results Handling
-        # print(events_async)
         logger.info("Beginning event stream processing")
         async for event in events_async:
             event_count += 1
             logger.debug(f"Processing event {event_count}")
-            # {'error': 'Function activities_agent is not found in the tools_dict.'}
             if not event.content or not event.content or not event.content.parts:
                 logger.debug("Skipping event with no content or parts")
                 continue
 
-            # print(event)
             author = event.author
             logger.debug(f"Event from author: {author}")
-            # Uncomment this to see the full event payload
-            # print(f"\n[{author}]: {json.dumps(event)}")
 
             logger.debug("Extracting function calls and responses from event")
             function_calls = [
