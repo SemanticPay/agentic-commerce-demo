@@ -1,6 +1,5 @@
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel, Field
-from typing import Any, List, Optional, Dict
+from typing import List
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 from dotenv import load_dotenv
@@ -13,11 +12,11 @@ import time
 try:
     from .agent import call_agent
     from .widgets import CartWidget, ProductWidget, Widget, WidgetType
-    from .base_types import FunctionPayload, QueryRequest, QueryResponse, ChatMessage, AgentCallRequest
+    from .base_types import FunctionPayload, QueryRequest, QueryResponse, AgentCallRequest
 except ImportError:
     from agent import call_agent
     from widgets import CartWidget, ProductWidget, Widget, WidgetType
-    from base_types import FunctionPayload, QueryRequest, QueryResponse, ChatMessage, AgentCallRequest
+    from base_types import FunctionPayload, QueryRequest, QueryResponse, AgentCallRequest
 
 # Configure logging to stdout
 logging.basicConfig(
@@ -50,12 +49,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 logger.info("CORS middleware added successfully")
-
-
-
-# In-memory session storage (in production, use a proper database)
-sessions: Dict[str, List[ChatMessage]] = {}
-logger.info("Session storage initialized")
 
 
 @app.get("/")
@@ -100,39 +93,12 @@ async def query_agent(request: QueryRequest):
         session_id = request.session_id or str(uuid.uuid4())
         logger.info(f"Session ID: {session_id}")
 
-        # Get existing chat history or use provided history
-        if session_id in sessions:
-            logger.info(f"Using existing session with {len(sessions[session_id])} messages")
-            chat_history = sessions[session_id]
-        else:
-            logger.info("Creating new session")
-            chat_history = request.chat_history or []
-            sessions[session_id] = []
-            logger.info(f"Initialized with {len(chat_history)} messages from request")
-
-        # Convert chat_history to dict format if it's from Pydantic models
-        logger.info("Converting chat history to dict format")
-        history_dicts = []
-        for msg in chat_history:
-            if isinstance(msg, ChatMessage):
-                history_dicts.append(
-                    {
-                        "role": msg.role,
-                        "content": msg.content,
-                        "timestamp": msg.timestamp,
-                    }
-                )
-            else:
-                history_dicts.append(msg)
-        logger.info(f"Converted {len(history_dicts)} messages")
-
         logger.info("Calling agent with question, context, and products data")
         while True:
             logger.info("Invoking call_agent function")
             agent_resp = await call_agent(
                 req=AgentCallRequest(
                     question=request.question,
-                    chat_history=history_dicts,
                     session_id=session_id,
                 ),
             )
@@ -150,38 +116,17 @@ async def query_agent(request: QueryRequest):
 
         logger.info("Creating widgets from function payloads")
         widgets = create_widgets_from_function_payload(agent_resp.function_payloads)
-        products_data = extract_products_from_session(agent_resp.function_payloads)
         logger.info(f"Created {len(widgets)} widget(s)")
 
         # Update session with new messages
         current_time = datetime.now().isoformat()
         logger.info(f"Updating session at {current_time}")
 
-        # Add user message
-        user_message = ChatMessage(
-            role="user", content=request.question, timestamp=current_time
-        )
-        sessions[session_id].append(user_message)
-        logger.info("User message added to session")
-
-        # Add agent response with function payloads
-        agent_message = ChatMessage(
-            role="agent",
-            content=agent_resp.answer if agent_resp else "No response generated",
-            timestamp=current_time,
-            products=products_data,
-        )
-        sessions[session_id].append(agent_message)
-        logger.info("Agent message added to session")
-        logger.info(f"Session now has {len(sessions[session_id])} total messages")
-
         logger.info("Building query response")
         response = QueryResponse(
-            question=request.question,
             response=agent_resp.answer if agent_resp else "No response generated",
             status="success",
             session_id=session_id,
-            updated_chat_history=sessions[session_id],
             widgets=widgets,
         )
         logger.info("Query completed successfully")
@@ -192,53 +137,6 @@ async def query_agent(request: QueryRequest):
     except Exception as e:
         logger.error(f"Error processing query: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Error processing query: {str(e)}")
-
-
-@app.get("/session/{session_id}")
-async def get_session_history(session_id: str):
-    """
-    Get the chat history for a specific session.
-
-    Args:
-        session_id: The session ID to retrieve history for
-
-    Returns:
-        Chat history for the session
-    """
-    logger.info(f"Session history requested for session_id: {session_id}")
-    
-    if session_id not in sessions:
-        logger.warning(f"Session {session_id} not found")
-        raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
-
-    logger.info(f"Returning {len(sessions[session_id])} messages for session {session_id}")
-    return {"session_id": session_id, "chat_history": sessions[session_id]}
-
-
-def extract_products_from_session(func_payloads: list[FunctionPayload]) -> List:
-    products_data = []
-
-    for idx, func_payload in enumerate(func_payloads):
-        if not func_payload or not func_payload.payload:
-            logger.debug(f"Skipping empty payload at index {idx}")
-            continue
-
-        logger.info(f"Processing function payload {idx + 1}: {func_payload.name}")
-
-        if func_payload.name == "search_products":
-            products = func_payload.payload.get("products", [])
-            for prod_idx, prod in enumerate(products):
-                if prod:
-                    products_data.append({
-                            "id": prod.get("id"),
-                            "title": prod.get("title"),
-                            "description": prod.get("description"),
-                            "price": prod.get("price", {}).get("amount"),
-                            "currency": prod.get("price", {}).get("currency_code"),
-                            "image_url": prod.get("image_url"),
-                        })
-
-    return products_data
 
 
 def create_widgets_from_function_payload(func_payloads: list[FunctionPayload]) -> List[Widget]:

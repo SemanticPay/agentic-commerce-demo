@@ -77,14 +77,21 @@ async def call_agent(req: AgentCallRequest) -> AgentCallResponse:
     logger.info("call_agent function invoked")
     logger.info(f"Question: {req.question}")
     logger.info(f"Session ID: {req.session_id}")
-    logger.info(f"Chat history length: {len(req.chat_history) if req.chat_history else 0}")
     
     try:
+        assert req.session_id, "Session ID must be provided"
+
         user_id = req.session_id
         logger.info(f"User ID: {user_id}")
 
         if user_id_to_session_id.get(user_id):
             session_id = user_id_to_session_id[user_id]
+            session = await SESSION_SERVICE.get_session(
+                app_name=APP_NAME, session_id=session_id, user_id=user_id,
+
+            )
+            if session is None:
+                raise ValueError(f"Session with ID {session_id} not found for user {user_id}")
             logger.info(f"Session found with ID: {session_id}")
         else:
             logger.info("Creating session")
@@ -92,29 +99,16 @@ async def call_agent(req: AgentCallRequest) -> AgentCallResponse:
                 state={}, app_name=APP_NAME, user_id=user_id
             )
             session_id = session.id
+            user_id_to_session_id[user_id] = session_id
             logger.info(f"Session created with ID: {session_id}")
 
-        # Build full conversation context from chat history
-        logger.info("Building conversation context from chat history")
-        full_context = ""
-        if req.chat_history:
-            logger.info(f"Processing {len(req.chat_history)} previous messages")
-            for idx, msg in enumerate(req.chat_history):
-                role_label = "user" if msg["role"] == "user" else "agent"
-                full_context += f"[{role_label}]: {msg['content']}\n"
-                logger.debug(f"Message {idx + 1} - {role_label}: {msg['content'][:100]}...")
-        else:
-            logger.info("No previous chat history")
-
-        # Add current question
-        full_context += f"[user]: {req.question}"
-        logger.info("Current question added to context")
-
-        query = full_context
+        query = f"[user]: {req.question}"
         logger.info(f"[user]: {req.question}")
-        logger.debug(f"[full context being sent]: {query}")
-        logger.info("Full context prepared for agent")
-        logger.debug(f"Full context length: {len(query)} characters")
+
+        print("SESSION STATE: ===================================")
+        print(session)
+        print("===================================")
+
         
         logger.info("Creating content object for agent")
         content = types.Content(role="user", parts=[types.Part(text=query)])
@@ -122,7 +116,7 @@ async def call_agent(req: AgentCallRequest) -> AgentCallResponse:
 
         logger.info("Starting async runner execution")
         events_async = RUNNER.run_async(
-            session_id=session_id, user_id=user_id, new_message=content
+            session_id=session.id, user_id=user_id, new_message=content
         )
         logger.info("Runner started, processing events stream")
 
@@ -134,7 +128,7 @@ async def call_agent(req: AgentCallRequest) -> AgentCallResponse:
         async for event in events_async:
             event_count += 1
             logger.debug(f"Processing event {event_count}")
-            if not event.content or not event.content or not event.content.parts:
+            if not event.content or not event.content.parts:
                 logger.debug("Skipping event with no content or parts")
                 continue
 

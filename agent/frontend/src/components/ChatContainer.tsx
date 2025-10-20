@@ -50,7 +50,6 @@ const ChatContainer: React.FC = () => {
         body: JSON.stringify({
           question: message,
           session_id: sessionId,
-          chat_history: messages
         })
       })
 

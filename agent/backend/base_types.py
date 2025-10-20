@@ -9,7 +9,6 @@ class FunctionPayload(BaseModel):
 
 class AgentCallRequest(BaseModel):
     question: str
-    chat_history: list[dict] = []
     session_id: str | None = None
 
 
@@ -18,36 +17,21 @@ class AgentCallResponse(BaseModel):
     function_payloads: list[FunctionPayload] = Field(default_factory=list)
 
 
-class ChatMessage(BaseModel):
-    role: str  # "user" or "agent"
-    content: str
-    timestamp: Optional[str] = None
-    products: list | None = None
-
-
 class QueryRequest(BaseModel):
     question: str
     session_id: Optional[str] = None
-    chat_history: Optional[List[ChatMessage]] = []
 
     class Config:
         json_schema_extra = {
             "example": {
                 "question": "I am looking for a bag",
                 "session_id": "session_123",
-                "chat_history": [
-                    {"role": "user", "content": "Hello"},
-                    {"role": "agent", "content": "Hi! How can I help you today?"},
-                ],
             }
         }
 
 
 class QueryResponse(BaseModel):
-    question: str
     response: str
     status: str
     session_id: Optional[str] = None
-    updated_chat_history: Optional[List[ChatMessage]] = []
     widgets: list[Any] = Field(default_factory=list)
-    products_data: list[dict] = []
