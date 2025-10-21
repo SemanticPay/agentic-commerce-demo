@@ -1,5 +1,4 @@
 from fastapi import FastAPI, HTTPException
-from typing import List
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 from dotenv import load_dotenv
@@ -9,14 +8,8 @@ import logging
 import sys
 import time
 
-try:
-    from .agent import call_agent
-    from .widgets import CartWidget, ProductWidget, Widget, WidgetType
-    from .base_types import FunctionPayload, QueryRequest, QueryResponse, AgentCallRequest
-except ImportError:
-    from agent import call_agent
-    from widgets import CartWidget, ProductWidget, Widget, WidgetType
-    from base_types import FunctionPayload, QueryRequest, QueryResponse, AgentCallRequest
+from agent.backend.agents.root.agent import call_agent
+from agent.backend.types.types import AgentCallRequest, QueryRequest, QueryResponse
 
 # Configure logging to stdout
 logging.basicConfig(
@@ -115,7 +108,7 @@ async def query_agent(request: QueryRequest):
         logger.info(f"Function payloads count: {len(agent_resp.function_payloads) if agent_resp.function_payloads else 0}")
 
         logger.info("Creating widgets from function payloads")
-        widgets = create_widgets_from_function_payload(agent_resp.function_payloads)
+        widgets = extract_widgets_from_function_payloads(agent_resp.function_payloads) if agent_resp else []
         logger.info(f"Created {len(widgets)} widget(s)")
 
         # Update session with new messages
@@ -139,78 +132,21 @@ async def query_agent(request: QueryRequest):
         raise HTTPException(status_code=500, detail=f"Error processing query: {str(e)}")
 
 
-def create_widgets_from_function_payload(func_payloads: list[FunctionPayload]) -> List[Widget]:
-    logger.info(f"Creating widgets from {len(func_payloads) if func_payloads else 0} function payloads")
-    ws: List[Widget] = []
+def extract_widgets_from_function_payloads(function_payloads):
+    """Extract widgets from function payloads"""
+    widgets = []
+    logger.info(f"Extracting widgets from {len(function_payloads)} function payloads")
+    for payload in function_payloads:
+        logger.info(f"Processing payload: {payload.name} --> {payload.payload}")
+        if payload.name == "create_products_widgets":
+            logger.info(f"Adding widget from payload: {payload.name}")
+            widgets.extend(payload.payload)
+        elif payload.name == "create_cart_widget":
+            logger.info(f"Adding widget from payload: {payload.name}")
+            widgets.append(payload.payload)
+    logger.info(f"Widget extraction completed -- {len(widgets)} widget(s) extracted -- {widgets}")
+    return widgets
 
-    for idx, func_payload in enumerate(func_payloads):
-        if not func_payload or not func_payload.payload:
-            logger.debug(f"Skipping empty payload at index {idx}")
-            return ws
-
-        logger.info(f"Processing function payload {idx + 1}: {func_payload.name}")
-        
-        if func_payload.name == "search_products":
-            products = func_payload.payload.get("products", [])
-            logger.info(f"Creating product widgets for {len(products)} products")
-            for prod_idx, prod in enumerate(products):
-                if prod:
-                    ws.append(create_product_widget(prod))
-                    logger.debug(f"Created product widget {prod_idx + 1}: {prod.get('title', 'Unknown')}")
-            logger.info(f"Created {len(products)} product widget(s)")
-            
-        elif func_payload.name in ["cart_get", "cart_create"]:
-            cart = func_payload.payload
-            logger.info(f"Creating cart widget for {func_payload.name}")
-            if cart:
-                ws.append(create_cart_widget(cart))
-                logger.info("Cart widget created successfully")
-
-    logger.info(f"Total widgets created: {len(ws)}")
-    return ws
-
-
-def create_product_widget(prod: dict) -> Widget:
-    logger.debug(f"Creating product widget for: {prod.get('title', 'Unknown product')}")
-    widget = ProductWidget(
-        type=WidgetType.PRODUCT,
-        data={
-            "id": prod.get("id"),
-            "title": prod.get("title"),
-            "description": prod.get("description"),
-            "price": prod.get("price", {}).get("amount"),
-            "currency": prod.get("price", {}).get("currency_code"),
-            "image_url": prod.get("image_url"),
-        },
-    )
-    logger.debug(f"Product widget created: {prod.get('title')} - {prod.get('price', {}).get('amount')} {prod.get('price', {}).get('currency_code')}")
-    return widget
-
-
-def create_cart_widget(cart: dict) -> Widget:
-    logger.debug("Creating cart widget")
-    subtotal = cart.get("subtotal_amount", {})
-    tax = cart.get("tax_amount", {}) or {}
-    total = cart.get("total_amount", {})
-    
-    logger.debug(f"Cart details - Subtotal: {subtotal.get('amount')} {subtotal.get('currency_code')}, " +
-                f"Tax: {tax.get('amount')} {tax.get('currency_code')}, " +
-                f"Total: {total.get('amount')} {total.get('currency_code')}")
-    
-    widget = CartWidget(
-        type=WidgetType.CART,
-        data={
-            "checkout_url": cart.get("checkout_url"),
-            "subtotal_amount": subtotal.get("amount"),
-            "subtotal_amount_currency_code": subtotal.get("currency_code"),
-            "tax_amount": tax.get("amount"),
-            "tax_amount_currency_code": tax.get("currency_code"),
-            "total_amount": total.get("amount"),
-            "total_amount_currency_code": total.get("currency_code"),
-        },
-    )
-    logger.debug("Cart widget created successfully")
-    return widget
 
 if __name__ == "__main__":
     logger.info("="*60)
