@@ -1,6 +1,5 @@
 import asyncio
 import json
-import uuid
 import logging
 import sys
 from dotenv import load_dotenv
@@ -9,16 +8,12 @@ from google.adk.agents import Agent
 from google.adk.artifacts.in_memory_artifact_service import InMemoryArtifactService
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
-from google.adk.tools.mcp_tool.mcp_toolset import McpToolset
-from google.adk.tools.mcp_tool.mcp_session_manager import StreamableHTTPConnectionParams
 from google.genai import types
 
-try:
-    from .base_types import AgentCallRequest, AgentCallResponse, FunctionPayload
-    from .prompt import ROOT_AGENT_INSTR
-except ImportError:
-    from base_types import AgentCallRequest, AgentCallResponse, FunctionPayload
-    from prompt import ROOT_AGENT_INSTR
+from agent.backend.agents.product.agent import product_agent
+from agent.backend.agents.cart.agent import cart_agent
+from agent.backend.types.types import AgentCallRequest, AgentCallResponse, FunctionPayload
+from agent.backend.agents.root.prompt import PROMPT
 
 # Configure logging to stdout
 logging.basicConfig(
@@ -33,27 +28,21 @@ logger.info("Loading environment variables for agent")
 load_dotenv()
 logger.info("Environment variables loaded")
 
-logger.info("Initializing MCP server connection")
-MCP_SERVER = McpToolset(
-            connection_params=StreamableHTTPConnectionParams(
-                url="http://localhost:8000/mcp",
-            )
-        )
-logger.info("MCP server connection established at http://localhost:8000/mcp")
 
-logger.info("Creating ROOT_AGENT with Gemini 2.5 Flash model")
+logger.info("Creating root-agent")
 ROOT_AGENT = Agent(
             model="gemini-2.5-flash",
             name="root_agent",
             description="A shopping assistant agent",
-            instruction=ROOT_AGENT_INSTR,
-            tools=[
-                MCP_SERVER,
+            instruction=PROMPT,
+            sub_agents=[
+                product_agent,
+                cart_agent,
             ],
         )
-logger.info("ROOT_AGENT created successfully")
+logger.info("root-agent created successfully")
 
-APP_NAME = "shopping-agent"
+APP_NAME = "semanticpay-shopping-assistant"
 logger.info(f"Initializing services for app: {APP_NAME}")
 SESSION_SERVICE = InMemorySessionService()
 logger.info("InMemorySessionService initialized")
@@ -108,7 +97,6 @@ async def call_agent(req: AgentCallRequest) -> AgentCallResponse:
         print("SESSION STATE: ===================================")
         print(session)
         print("===================================")
-
         
         logger.info("Creating content object for agent")
         content = types.Content(role="user", parts=[types.Part(text=query)])
@@ -160,9 +148,14 @@ async def call_agent(req: AgentCallRequest) -> AgentCallResponse:
                     continue
 
                 logger.info(f"Processing function response for {func_resp.name} - {func_resp.response}")
+                # try:
+                #     func_payload = json.loads(func_resp.response["result"].content[0].text)
+                #     logger.info(f"FUNC RESPONSE: [{author}]: {func_resp.name} -> {json.dumps(func_payload, indent=2)}")
+                # except Exception as e:
+                #     logger.error(f"Error parsing function response JSON: {str(e)}")
                 try:
-                    func_payload = json.loads(func_resp.response["result"].content[0].text)
-                    logger.info(f"FUNC RESPONSE: [{author}]: {func_resp.name} -> {json.dumps(func_payload, indent=2)}")
+                    func_payload = func_resp.response["result"]
+                    logger.info(f"FUNC RESPONSE: [{author}]: {func_resp.name} -> {func_payload}")
                 except Exception as e:
                     logger.error(f"Error parsing function response JSON: {str(e)}")
 
@@ -190,11 +183,6 @@ async def call_agent(req: AgentCallRequest) -> AgentCallResponse:
     except Exception as e:
         logger.error(f"Error in call_agent: {str(e)}", exc_info=True)
         raise
-    finally:
-        # Properly close the MCP connection to avoid async context issues
-        logger.info("Closing MCP server connection")
-        await MCP_SERVER.close()
-        logger.info("MCP server connection closed")
 
 
 if __name__ == "__main__":

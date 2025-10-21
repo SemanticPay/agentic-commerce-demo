@@ -1,0 +1,13 @@
+from agent.backend.client.base_types import StoreProvider
+from agent.backend.client.interface import StoreFrontClient
+from agent.backend.client.shopify import ShopifyGraphQLClient
+
+
+def get_storefront_client(provider: StoreProvider, **provider_kwargs) -> StoreFrontClient:
+    if provider == StoreProvider.SHOPIFY:
+        return ShopifyGraphQLClient(
+            store_url=provider_kwargs.get("store_url", ""),
+            access_token=provider_kwargs.get("access_token"),
+        )
+    else:
+        raise ValueError(f"Unsupported store provider: {provider}")

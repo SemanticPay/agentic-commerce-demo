@@ -53,7 +53,7 @@ mcp: ## Run the MCP server
 .PHONY: agent-backend
 agent-backend: ## Run the agent backend server
 	@echo "$(COLOR_BLUE)Starting agent backend...$(COLOR_RESET)"
-	$(PYTHON_VENV) agent/backend/main.py
+	PYTHONPATH=. $(PYTHON_VENV) agent/backend/main.py
 
 .PHONY: agent-frontend
 agent-frontend: ## Run the agent frontend server
