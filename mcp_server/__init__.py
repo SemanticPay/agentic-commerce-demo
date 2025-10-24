@@ -1,1 +1,0 @@
-"""SemanticPay MCP Server package."""

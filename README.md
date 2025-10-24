@@ -2,12 +2,21 @@
 
 To run:
 
-1. Create Python environment and install the dependencies:
+1. Install dependencies:
+
+- Python:
 
 ```bash
 python3 -m venv env
 source env/bin/activate
 pip install -r requirements.txt
+```
+
+- Node.js:
+
+```bash
+cd frontend
+npm install
 ```
 
 2. Ensure .env variables are set:

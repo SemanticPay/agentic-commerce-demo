@@ -1,4 +1,5 @@
 import logging
+import os
 import sys
 
 from google.adk.tools import ToolContext
@@ -22,7 +23,7 @@ logger = logging.getLogger(__name__)
 logger.info("Initializing Shopify storefront client")
 storefront_client: StoreFrontClient = get_storefront_client(
     provider=StoreProvider.SHOPIFY,
-    store_url="https://huescorner.myshopify.com/api/2025-10/graphql.json",
+    store_url=os.getenv("SHOPIFY_STOREFRONT_STORE_URL", "")
 )
 logger.info("Storefront client initialized successfully")
 

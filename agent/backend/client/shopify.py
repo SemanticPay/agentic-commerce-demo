@@ -1,10 +1,13 @@
+import json
+import os
+from dotenv import load_dotenv
 import requests
 import logging
 import sys
 from typing import Dict, Any, Optional
 
-from agent.backend.client.base_types import Address, AddressOption, BuyerIdentity, Cart, CartAddressInput, CartCreateRequest, CartCreateResponse, CartDeliveryInput, CartGetRequest, CartGetResponse, CartLineInput, Product, SearchProductsRequest, SearchProductsResponse
-from agent.backend.client.interface import StoreFrontClient
+from agent.backend.client.base_types import Address, AddressOption, BuyerIdentity, Cart, CartAddressInput, CartCreateRequest, CartCreateResponse, CartDeliveryInput, CartGetRequest, CartGetResponse, CartLineInput, GetProductsRequest, GetProductsResponse, Product, SearchProductsRequest, SearchProductsResponse
+from agent.backend.client.interface import ProductsClient, StoreFrontClient
 
 # Configure logging to stdout
 logging.basicConfig(
@@ -375,7 +378,7 @@ class ShopifyGraphQLClient(StoreFrontClient):
             raise Exception(f"Failed to get cart: {str(e)}")
 
 
-if __name__ == "__main__":
+def test_storefront_client():
     """
     Quick integration test demonstrating client usage.
     
@@ -386,7 +389,7 @@ if __name__ == "__main__":
     logger.info("Starting Shopify client integration tests")
     logger.info("="*60)
     
-    client = ShopifyGraphQLClient(store_url="https://huescorner.myshopify.com/api/2025-10/graphql.json")
+    client = ShopifyGraphQLClient(store_url=os.getenv("SHOPIFY_STOREFRONT_STORE_URL", ""),)
     
     # Test 1: Search for products
     logger.info("TEST 1: Product Search")
@@ -462,3 +465,213 @@ if __name__ == "__main__":
     logger.info("All integration tests completed")
     logger.info("="*60)
 
+
+class ShopifyAdminClient(ProductsClient):
+    def __init__(self, store_url: str, access_token: str):
+        self.store_url = store_url
+        self.access_token = access_token
+        self.headers = {
+            "Content-Type": "application/json",
+            "X-Shopify-Access-Token": access_token,
+        }
+
+    def _execute_query(self, query: str, variables: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        logger.debug("Executing GraphQL query")
+        logger.debug(f"Variables: {variables}")
+        
+        payload = {
+            "query": query,
+            "variables": variables or {}
+        }
+        
+        try:
+            logger.info(f"Sending POST request to {self.store_url}")
+            response = requests.post(
+                self.store_url,
+                headers=self.headers,
+                json=payload,
+                timeout=30
+            )
+            logger.info(f"Received response with status code: {response.status_code}")
+            
+            response.raise_for_status()
+            logger.debug("HTTP request successful")
+            
+            data = response.json()
+            logger.debug("Response parsed as JSON")
+            
+            if "errors" in data:
+                logger.error(f"GraphQL errors in response: {data['errors']}")
+                raise Exception(f"GraphQL errors: {data['errors']}")
+            
+            logger.debug("GraphQL query executed successfully")
+            return data.get("data", {})
+            
+        except requests.Timeout as e:
+            logger.error("Request timed out after 30 seconds", exc_info=True)
+            raise
+        except requests.HTTPError as e:
+            logger.error(f"HTTP error occurred: {e}", exc_info=True)
+            raise
+        except Exception as e:
+            logger.error(f"Error executing GraphQL query: {str(e)}", exc_info=True)
+            raise
+
+    def get_products(self, req: GetProductsRequest) -> GetProductsResponse:
+        """
+        Fetch products from Shopify Admin API with automatic pagination support.
+        
+        Args:
+            req (GetProductsRequest): Request object containing number of products to fetch. 
+        
+        Returns:
+            GetProductsResponse containing all requested products
+        """
+        graphql_query = """
+        query getProducts($first: Int!, $after: String) {
+            products(first: $first, after: $after) {
+                edges {
+                    cursor
+                    node {
+                        id
+                        title
+                        description
+                        images(first: 5) {
+                            edges {
+                                node {
+                                    url
+                                }
+                            }
+                        }
+                        variants(first: 10) {
+                            edges {
+                                node {
+                                    id
+                                    title
+                                    price
+                                }
+                            }
+                        }
+                        priceRangeV2 {
+                            minVariantPrice {
+                                amount
+                                currencyCode
+                            }
+                            maxVariantPrice {
+                                amount
+                                currencyCode
+                            }
+                        }
+                    }
+                }
+                pageInfo {
+                    hasNextPage
+                    endCursor
+                }
+            }
+        }
+        """
+        
+        all_products: list[Product] = []
+        remaining = req.num_results
+        after_cursor = None
+        
+        logger.info(f"Starting to fetch {req.num_results} product(s) from Shopify Admin API")
+        
+        try:
+            while remaining > 0:
+                # Fetch up to 250 products per page (Shopify's limit)
+                page_size = min(remaining, 250)
+                
+                variables = {
+                    "first": page_size,
+                    "after": after_cursor
+                }
+                
+                logger.info(f"Fetching page with {page_size} products (cursor: {after_cursor})")
+                data = self._execute_query(graphql_query, variables)
+                logger.info("Product query executed successfully")
+                
+                products_data = data.get("products", {})
+                edges = products_data.get("edges", [])
+                page_info = products_data.get("pageInfo", {})
+                
+                logger.info(f"Retrieved {len(edges)} product(s) in this page")
+                
+                # Process products from this page
+                for idx, edge in enumerate(edges):
+                    product = edge["node"]
+                    logger.debug(f"Processing product {idx + 1}/{len(edges)}: {product.get('title')}")
+                    
+                    # Format images
+                    images = []
+                    for img_edge in product.get("images", {}).get("edges", []):
+                        images.append(img_edge["node"]["url"])
+                    product["images"] = images
+                    logger.debug(f"Formatted {len(images)} image(s)")
+                    
+                    # Format variants
+                    variants = []
+                    for var_edge in product.get("variants", {}).get("edges", []):
+                        variant_node = var_edge["node"]
+                        # Admin API returns price as string, need to format it
+                        variant_node["price"] = {
+                            "amount": variant_node["price"],
+                            "currencyCode": "USD"  # Default, will be overridden by priceRange if available
+                        }
+                        variants.append(variant_node)
+                    product["variants"] = variants
+                    logger.debug(f"Formatted {len(variants)} variant(s)")
+                    
+                    # Rename priceRangeV2 to priceRange for consistency
+                    if "priceRangeV2" in product:
+                        product["priceRange"] = product.pop("priceRangeV2")
+                    
+                    # For single variant products, simplify the structure
+                    if len(product.get("variants", [])) <= 1:
+                        price = product.get("priceRange", {}).get("minVariantPrice")
+                        if price:
+                            product["price"] = price
+                            product.pop("priceRange", None)
+                        logger.debug("Simplified price structure for single-variant product")
+                    
+                    all_products.append(Product(**product))
+                    logger.debug(f"Product {idx + 1} processed and added to list")
+                
+                remaining -= len(edges)
+                logger.info(f"Processed {len(all_products)} total products so far, {remaining} remaining")
+                
+                # Check if we need to fetch more pages
+                has_next_page = page_info.get("hasNextPage", False)
+                after_cursor = page_info.get("endCursor")
+                
+                if not has_next_page or remaining <= 0:
+                    logger.info("No more pages to fetch or target count reached")
+                    break
+                
+                if not after_cursor:
+                    logger.warning("hasNextPage is true but no endCursor provided")
+                    break
+            
+            logger.info(f"Successfully fetched {len(all_products)} product(s)")
+            logger.info("="*60)
+            return GetProductsResponse(products=all_products)
+            
+        except Exception as e:
+            logger.error(f"Failed to get products: {str(e)}", exc_info=True)
+            raise Exception(f"Failed to get products: {str(e)}")
+        
+
+def test_admin_client():
+    load_dotenv()
+    admin_client = ShopifyAdminClient(
+        store_url=os.getenv("SHOPIFY_ADMIN_API_STORE_URL", ""),
+        access_token=os.getenv("SHOPIFY_ADMIN_API_ACCESS_TOKEN", "")
+    )
+
+    products = admin_client.get_products(GetProductsRequest(num_results=100))
+    print(products.model_dump_json(indent=2))
+
+if __name__ == "__main__":
+    # test_storefront_client()
+    test_admin_client()

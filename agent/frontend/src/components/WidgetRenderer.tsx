@@ -1,7 +1,5 @@
 import React from 'react'
-import { Widget, WidgetType, ProductWidgetData, CartWidgetData } from '../types'
-import ProductWidget from './ProductWidget'
-import CartWidget from './CartWidget'
+import { Widget, WidgetType } from '../types'
 
 interface WidgetRendererProps {
   widget: Widget
@@ -10,9 +8,9 @@ interface WidgetRendererProps {
 const WidgetRenderer: React.FC<WidgetRendererProps> = ({ widget }) => {
   switch (widget.type) {
     case WidgetType.PRODUCT:
-      return <ProductWidget data={widget.data as ProductWidgetData} />
+      return <div className="product-widget" dangerouslySetInnerHTML={{ __html: widget.raw_html_string }} />
     case WidgetType.CART:
-      return <CartWidget data={widget.data as CartWidgetData} />
+      return <div className="cart-widget" dangerouslySetInnerHTML={{ __html: widget.raw_html_string }} />
     default:
       console.warn('Unknown widget type:', widget.type)
       return null

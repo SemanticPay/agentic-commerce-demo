@@ -50,6 +50,7 @@ class QueryRequest(BaseModel):
 class Widget(BaseModel):
     type: str
     data: Any
+    raw_html_string: str
 
 
 class QueryResponse(BaseModel):
@@ -69,3 +70,9 @@ class ProductWidget(Widget):
 
 class CartWidget(Widget):
     pass
+
+
+class UserPreferences(BaseModel):
+    preferred_currency: str
+    favorite_categories: list[str] = Field(default_factory=list)
+    price_range: Optional[tuple[float, float]] = None

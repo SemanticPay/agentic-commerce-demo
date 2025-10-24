@@ -25,6 +25,7 @@ export interface CartWidgetData {
 export interface Widget {
   type: WidgetType
   data: ProductWidgetData | CartWidgetData
+  raw_html_string: string
 }
 
 export interface ChatMessage {

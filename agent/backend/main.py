@@ -1,3 +1,4 @@
+from typing import Any
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
@@ -9,7 +10,7 @@ import sys
 import time
 
 from agent.backend.agents.root.agent import call_agent
-from agent.backend.types.types import AgentCallRequest, QueryRequest, QueryResponse
+from agent.backend.types.types import AgentCallRequest, FunctionPayload, QueryRequest, QueryResponse
 
 # Configure logging to stdout
 logging.basicConfig(
@@ -132,17 +133,20 @@ async def query_agent(request: QueryRequest):
         raise HTTPException(status_code=500, detail=f"Error processing query: {str(e)}")
 
 
-def extract_widgets_from_function_payloads(function_payloads):
-    """Extract widgets from function payloads"""
-    widgets = []
+def extract_widgets_from_function_payloads(function_payloads: list[FunctionPayload]):
+    """Extract widgets from function payloads
+    
+    NOTE: This function is tied to the specific function names used in the agent tools.
+    """
+    widgets: list[Any] = []
     logger.info(f"Extracting widgets from {len(function_payloads)} function payloads")
     for payload in function_payloads:
         logger.info(f"Processing payload: {payload.name} --> {payload.payload}")
         if payload.name == "create_products_widgets":
-            logger.info(f"Adding widget from payload: {payload.name}")
+            logger.info(f"Adding product widgets from payload: {payload.name} -- {len(payload.payload) if payload.payload else 0} items")
             widgets.extend(payload.payload)
         elif payload.name == "create_cart_widget":
-            logger.info(f"Adding widget from payload: {payload.name}")
+            logger.info(f"Adding cart widget from payload: {payload.name}")
             widgets.append(payload.payload)
     logger.info(f"Widget extraction completed -- {len(widgets)} widget(s) extracted -- {widgets}")
     return widgets

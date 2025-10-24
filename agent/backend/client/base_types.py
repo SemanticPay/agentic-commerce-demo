@@ -144,3 +144,16 @@ class CartCreateResponse(BaseModel):
     cart: Cart | None = None
     user_errors: list[UserError] = Field(default=[], alias="userErrors")
     warnings: list[CartWarning] = Field(default=[])
+
+
+# ============================================================================
+# Get Products Operations
+# ============================================================================
+
+
+class GetProductsRequest(BaseModel):
+    num_results: int
+
+
+class GetProductsResponse(BaseModel):
+    products: list[Product]

@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from agent.backend.client.base_types import CartCreateRequest, CartCreateResponse, CartGetRequest, CartGetResponse, SearchProductsRequest, SearchProductsResponse
+from agent.backend.client.base_types import CartCreateRequest, CartCreateResponse, CartGetRequest, CartGetResponse, GetProductsRequest, GetProductsResponse, SearchProductsRequest, SearchProductsResponse
 
 
 class StoreFrontClient(ABC):
@@ -209,4 +209,10 @@ class StoreFrontClient(ABC):
               out-of-stock items or applying price changes).
             - The checkout URL is typically a deep link that can be shared or bookmarked.
         """
+        pass
+
+
+class ProductsClient(ABC):
+    @abstractmethod
+    def get_products(self, req: GetProductsRequest) -> GetProductsResponse:
         pass
