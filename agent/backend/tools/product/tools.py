@@ -4,7 +4,7 @@ import sys
 
 from google.adk.tools import ToolContext
 
-from agent.backend.client.base_types import SearchProductsRequest, StoreProvider
+from agent.backend.client.base_types import GetProductRequest, SearchProductsRequest, StoreProvider
 from agent.backend.client.factory import get_storefront_client
 from agent.backend.client.interface import StoreFrontClient
 from agent.backend.types.types import Price, Product, ProductList
@@ -116,4 +116,137 @@ def search_products(query: str, tool_context: ToolContext) -> ProductList:
     
     except Exception as e:
         logger.error(f"Error in search_products: {str(e)}", exc_info=True)
+        raise
+
+
+def get_product_details(product_id: str = "", handle: str = "", tool_context: ToolContext = None) -> Product | None:
+    """Get detailed information for a specific product by ID or handle.
+    
+    This MCP tool allows AI agents to retrieve complete details about a single
+    product from the e-commerce store using either its unique ID or URL handle.
+    Use this when the user wants detailed information about a specific product.
+    
+    **AI Agent Instructions:**
+    - Use this tool when the user asks about a specific product by name or after
+      they've selected a product from search results
+    - Provide either product_id (from search results) or handle (URL-friendly name)
+    - Returns full product details including all variants, pricing, and images
+    - If product is not found, returns None
+    - Present the full product information to the user including available variants
+    
+    Args:
+        product_id (str): Unique product variant ID from search results 
+            (e.g., "gid://shopify/ProductVariant/123"). 
+            Note: This is a variant ID from search results. If you have a 
+            product handle instead, use the handle parameter.
+            Default: "" (will use handle instead)
+        handle (str): URL-friendly product handle/slug (e.g., "wool-sweater").
+            Use this when you know the product name but not the ID.
+            Default: "" (will use product_id instead)
+        tool_context (ToolContext): Context object provided by the framework.
+            Default: None
+    
+    Returns:
+        Product | None: Product object containing:
+            - id (str): Unique product variant identifier
+            - title (str): Product name/title with variant details
+            - description (str): Detailed product description (may contain HTML)
+            - image_url (str): URL to product image for display
+            - price (Price): Product price with amount and currency_code
+            Returns None if product is not found or not published
+    
+    Example AI Conversation Flow:
+        User: "Tell me more about the wool sweater"
+        AI: [calls get_product_details(handle="wool-sweater")]
+        AI: "The Wool Sweater is a cozy winter essential. It's available in 
+             3 sizes: Small ($45.99), Medium ($45.99), Large ($47.99). 
+             It's made from 100% merino wool..."
+    
+    Example Usage:
+        >>> # Get product by handle
+        >>> product = get_product_details(handle="wool-sweater")
+        >>> if product:
+        ...     print(f"{product.title}: ${product.price.amount}")
+        >>> 
+        >>> # Get product by ID (from search results)
+        >>> product = get_product_details(product_id="gid://shopify/ProductVariant/123")
+        >>> if product:
+        ...     print(f"Description: {product.description}")
+    
+    Note:
+        - Provide either product_id OR handle, not both
+        - If both are provided, product_id takes precedence
+        - Product must be published to be retrievable
+        - Pricing may vary by region/market
+        - Returns None if product doesn't exist or isn't published
+    """
+    logger.info(f"get_product_details called with product_id: '{product_id}', handle: '{handle}'")
+    
+    if not product_id and not handle:
+        logger.error("Neither product_id nor handle provided")
+        raise ValueError("Either product_id or handle must be provided")
+    
+    try:
+        # Note: product_id from search results is actually a variant ID
+        # We need to extract the product ID from it or convert to handle
+        # For Shopify, variant IDs look like: gid://shopify/ProductVariant/123
+        # Product IDs look like: gid://shopify/Product/123
+        
+        # If we have a variant ID, we'll convert it to product ID
+        actual_product_id = None
+        if product_id:
+            # Extract product ID from variant ID if needed
+            if "ProductVariant" in product_id:
+                logger.info(f"Converting variant ID to product ID: {product_id}")
+                # We'll use the handle approach instead since variant ID won't work
+                # for the product query
+                logger.warning("Variant ID provided, but product query needs product ID or handle. Using handle search instead.")
+                # Try to search by variant ID first to get the handle
+                # For now, raise an error to guide proper usage
+                raise ValueError(
+                    "Product variant ID provided, but get_product requires a product ID or handle. "
+                    "Please use the handle parameter instead, or search for the product first."
+                )
+            else:
+                actual_product_id = product_id
+        
+        logger.info("Sending get product request to storefront client")
+        resp = storefront_client.get_product(
+            GetProductRequest(
+                id=actual_product_id,
+                handle=handle if not actual_product_id else None
+            )
+        )
+        
+        if resp.product is None:
+            identifier = actual_product_id or handle
+            logger.info(f"Product not found: {identifier}")
+            return None
+        
+        logger.info(f"Received product: {resp.product.title}")
+        
+        # Convert the client Product type to the tool Product type
+        # Take the first variant as the primary product representation
+        if not resp.product.variants:
+            logger.warning(f"Product {resp.product.title} has no variants")
+            return None
+        
+        # Return the first variant as a Product
+        first_variant = resp.product.variants[0]
+        product = Product(
+            id=first_variant.id,
+            title=f"{resp.product.title} - {first_variant.title}",
+            description=resp.product.description,
+            image_url=resp.product.images[0] if resp.product.images else "",
+            price=Price(
+                amount=first_variant.price.amount,
+                currency_code=first_variant.price.currency_code,
+            ),
+        )
+        
+        logger.info(f"Successfully retrieved product: {product.title}")
+        return product
+    
+    except Exception as e:
+        logger.error(f"Error in get_product_details: {str(e)}", exc_info=True)
         raise

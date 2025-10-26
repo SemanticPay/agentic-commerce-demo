@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from agent.backend.client.base_types import CartCreateRequest, CartCreateResponse, CartGetRequest, CartGetResponse, GetProductsRequest, GetProductsResponse, SearchProductsRequest, SearchProductsResponse
+from agent.backend.client.base_types import CartCreateRequest, CartCreateResponse, CartGetRequest, CartGetResponse, GetProductRequest, GetProductResponse, GetProductsRequest, GetProductsResponse, SearchProductsRequest, SearchProductsResponse
 
 
 class StoreFrontClient(ABC):
@@ -208,6 +208,50 @@ class StoreFrontClient(ABC):
             - Some platforms may update cart contents automatically (e.g., removing
               out-of-stock items or applying price changes).
             - The checkout URL is typically a deep link that can be shared or bookmarked.
+        """
+        pass
+
+    @abstractmethod
+    def get_product(self, req: GetProductRequest) -> GetProductResponse:
+        """Retrieve a specific product by its handle or ID.
+        
+        Fetches detailed information about a single product from the e-commerce platform
+        using either its unique handle (URL-friendly slug) or its unique identifier.
+        At least one of handle or id must be provided.
+        
+        Args:
+            req (GetProductRequest): Product retrieval request containing:
+                - handle (str | None): The URL-friendly handle of the product (e.g., "wool-sweater").
+                - id (str | None): The unique product identifier (e.g., "gid://shopify/Product/123").
+        
+        Returns:
+            GetProductResponse: Response containing:
+                - product (Product | None): The product object with full details including
+                  ID, title, description, images, price, and variants. Returns None if not found.
+        
+        Raises:
+            NotImplementedError: If the method is not implemented by subclass.
+            ConnectionError: If unable to connect to the storefront API.
+            AuthenticationError: If API credentials are invalid or expired.
+            ValueError: If neither handle nor id is provided.
+        
+        Example:
+            >>> client = MyStoreFrontClient()
+            >>> 
+            >>> # Get product by handle
+            >>> request = GetProductRequest(handle="wool-sweater")
+            >>> response = client.get_product(request)
+            >>> if response.product:
+            ...     print(f"{response.product.title}: ${response.product.price.amount}")
+            >>> 
+            >>> # Get product by ID
+            >>> request = GetProductRequest(id="gid://shopify/Product/123")
+            >>> response = client.get_product(request)
+        
+        Note:
+            - Only one of handle or id needs to be provided; if both are provided, id takes precedence.
+            - Product availability and pricing may vary by market/location.
+            - Returns None if the product is not found or not published.
         """
         pass
 

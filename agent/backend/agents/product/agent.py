@@ -3,8 +3,8 @@ import sys
 from dotenv import load_dotenv
 from google.adk.agents import Agent
 
-from agent.backend.tools.product.tools import  search_products
-from agent.backend.tools.interface.tools import  create_products_widgets
+from agent.backend.tools.product.tools import search_products, get_product_details
+from agent.backend.tools.interface.tools import create_products_widgets
 from agent.backend.agents.product.prompt import PROMPT
 
 
@@ -29,6 +29,7 @@ product_agent = Agent(
             instruction=PROMPT,
             tools=[
                 search_products,
+                get_product_details,
                 create_products_widgets,
             ]
         )
