@@ -157,3 +157,17 @@ class GetProductsRequest(BaseModel):
 
 class GetProductsResponse(BaseModel):
     products: list[Product]
+
+
+# ============================================================================
+# Get Product By ID/Handle Operations
+# ============================================================================
+
+
+class GetProductRequest(BaseModel):
+    handle: str | None = None
+    id: str | None = None
+
+
+class GetProductResponse(BaseModel):
+    product: Product | None

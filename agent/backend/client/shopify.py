@@ -6,7 +6,7 @@ import logging
 import sys
 from typing import Dict, Any, Optional
 
-from agent.backend.client.base_types import Address, AddressOption, BuyerIdentity, Cart, CartAddressInput, CartCreateRequest, CartCreateResponse, CartDeliveryInput, CartGetRequest, CartGetResponse, CartLineInput, GetProductsRequest, GetProductsResponse, Product, SearchProductsRequest, SearchProductsResponse
+from agent.backend.client.base_types import Address, AddressOption, BuyerIdentity, Cart, CartAddressInput, CartCreateRequest, CartCreateResponse, CartDeliveryInput, CartGetRequest, CartGetResponse, CartLineInput, GetProductRequest, GetProductResponse, GetProductsRequest, GetProductsResponse, Product, SearchProductsRequest, SearchProductsResponse
 from agent.backend.client.interface import ProductsClient, StoreFrontClient
 
 # Configure logging to stdout
@@ -376,6 +376,149 @@ class ShopifyGraphQLClient(StoreFrontClient):
         except Exception as e:
             logger.error(f"Failed to get cart: {str(e)}", exc_info=True)
             raise Exception(f"Failed to get cart: {str(e)}")
+
+    def get_product(self, req: GetProductRequest) -> GetProductResponse:
+        """
+        Retrieve a specific product by its handle or ID from Shopify Storefront API.
+        
+        Args:
+            req (GetProductRequest): Request containing either handle or id
+            
+        Returns:
+            GetProductResponse: Response containing the product or None if not found
+        """
+        if not req.handle and not req.id:
+            logger.error("Neither handle nor id provided in GetProductRequest")
+            raise ValueError("Either handle or id must be provided")
+        
+        # Build the query based on what's provided (id takes precedence)
+        if req.id:
+            graphql_query = """
+            query getProduct($id: ID!) {
+                product(id: $id) {
+                    id
+                    title
+                    description
+                    images(first: 5) {
+                        edges {
+                            node {
+                                url
+                            }
+                        }
+                    }
+                    variants(first: 10) {
+                        edges {
+                            node {
+                                id
+                                title
+                                price {
+                                    amount
+                                    currencyCode
+                                }
+                            }
+                        }
+                    }
+                    priceRange {
+                        minVariantPrice {
+                            amount
+                            currencyCode
+                        }
+                        maxVariantPrice {
+                            amount
+                            currencyCode
+                        }
+                    }
+                }
+            }
+            """
+            variables = {"id": req.id}
+            logger.info(f"Fetching product by ID: {req.id}")
+        else:
+            graphql_query = """
+            query getProduct($handle: String!) {
+                product(handle: $handle) {
+                    id
+                    title
+                    description
+                    images(first: 5) {
+                        edges {
+                            node {
+                                url
+                            }
+                        }
+                    }
+                    variants(first: 10) {
+                        edges {
+                            node {
+                                id
+                                title
+                                price {
+                                    amount
+                                    currencyCode
+                                }
+                            }
+                        }
+                    }
+                    priceRange {
+                        minVariantPrice {
+                            amount
+                            currencyCode
+                        }
+                        maxVariantPrice {
+                            amount
+                            currencyCode
+                        }
+                    }
+                }
+            }
+            """
+            variables = {"handle": req.handle}
+            logger.info(f"Fetching product by handle: {req.handle}")
+        
+        try:
+            logger.info("Executing product retrieval GraphQL query")
+            data = self._execute_query(graphql_query, variables)
+            logger.info("Product retrieval query executed successfully")
+            
+            product_data = data.get("product")
+            
+            if product_data is None:
+                identifier = req.id if req.id else req.handle
+                logger.info(f"Product not found: {identifier}")
+                return GetProductResponse(product=None)
+            
+            logger.info(f"Product found: {product_data.get('title')}")
+            
+            # Format images
+            images = []
+            for img_edge in product_data.get("images", {}).get("edges", []):
+                images.append(img_edge["node"]["url"])
+            product_data["images"] = images
+            logger.debug(f"Formatted {len(images)} image(s)")
+            
+            # Format variants
+            variants = []
+            for var_edge in product_data.get("variants", {}).get("edges", []):
+                variants.append(var_edge["node"])
+            product_data["variants"] = variants
+            logger.debug(f"Formatted {len(variants)} variant(s)")
+            
+            # For single variant products, simplify the structure
+            if len(product_data.get("variants", [])) <= 1:
+                price = product_data.get("priceRange", {}).get("minVariantPrice")
+                if price:
+                    product_data["price"] = price
+                    product_data.pop("priceRange", None)
+                    logger.debug("Simplified price structure for single-variant product")
+            
+            product = Product(**product_data)
+            logger.info(f"Successfully retrieved product: {product.title}")
+            logger.info("="*60)
+            return GetProductResponse(product=product)
+            
+        except Exception as e:
+            logger.error(f"Failed to get product: {str(e)}", exc_info=True)
+            raise Exception(f"Failed to get product: {str(e)}")
 
 
 def test_storefront_client():
