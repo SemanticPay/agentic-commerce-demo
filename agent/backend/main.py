@@ -9,7 +9,7 @@ import logging
 import sys
 import time
 
-from agent.backend.agents.root.agent import call_agent
+from agent.backend.agents.orchestrator.agent import call_agent
 from agent.backend.types.types import AgentCallRequest, FunctionPayload, QueryRequest, QueryResponse
 
 # Configure logging to stdout

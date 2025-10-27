@@ -13,7 +13,7 @@ from google.genai import types
 from agent.backend.agents.product.agent import product_agent
 from agent.backend.agents.cart.agent import cart_agent
 from agent.backend.types.types import AgentCallRequest, AgentCallResponse, FunctionPayload
-from agent.backend.agents.root.prompt import PROMPT
+from agent.backend.agents.orchestrator.prompt import PROMPT
 
 # Configure logging to stdout
 logging.basicConfig(
@@ -29,10 +29,10 @@ load_dotenv()
 logger.info("Environment variables loaded")
 
 
-logger.info("Creating root-agent")
-ROOT_AGENT = Agent(
+logger.info("Creating orchestrator-agent")
+ORCHESTRATOR_AGENT = Agent(
             model="gemini-2.5-flash",
-            name="root_agent",
+            name="orchestrator_agent",
             description="A shopping assistant agent",
             instruction=PROMPT,
             sub_agents=[
@@ -40,7 +40,7 @@ ROOT_AGENT = Agent(
                 cart_agent,
             ],
         )
-logger.info("root-agent created successfully")
+logger.info("orchestrator-agent created successfully")
 
 APP_NAME = "semanticpay-shopping-assistant"
 logger.info(f"Initializing services for app: {APP_NAME}")
@@ -52,7 +52,7 @@ logger.info("InMemoryArtifactService initialized")
 logger.info("Creating Runner instance")
 RUNNER = Runner(
             app_name=APP_NAME,
-            agent=ROOT_AGENT,
+            agent=ORCHESTRATOR_AGENT,
             artifact_service=ARTIFACT_SERVICE,
             session_service=SESSION_SERVICE,
         )
