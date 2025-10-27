@@ -12,6 +12,7 @@ from google.genai import types
 
 from agent.backend.agents.product.agent import product_agent
 from agent.backend.agents.cart.agent import cart_agent
+from agent.backend.agents.context.agent import context_agent
 from agent.backend.types.types import AgentCallRequest, AgentCallResponse, FunctionPayload
 from agent.backend.agents.orchestrator.prompt import PROMPT
 
@@ -38,6 +39,7 @@ ORCHESTRATOR_AGENT = Agent(
             sub_agents=[
                 product_agent,
                 cart_agent,
+                context_agent,
             ],
         )
 logger.info("orchestrator-agent created successfully")
