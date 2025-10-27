@@ -10,7 +10,7 @@ from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
 from google.genai import types
 
-from agent.backend.agents.product.agent import product_agent
+from agent.backend.agents.discovery.agent import discovery_agent
 from agent.backend.agents.cart.agent import cart_agent
 from agent.backend.agents.context.agent import context_agent
 from agent.backend.types.types import AgentCallRequest, AgentCallResponse, FunctionPayload
@@ -37,7 +37,7 @@ ORCHESTRATOR_AGENT = Agent(
             description="A shopping assistant agent",
             instruction=PROMPT,
             sub_agents=[
-                product_agent,
+                discovery_agent,
                 cart_agent,
                 context_agent,
             ],
