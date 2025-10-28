@@ -76,3 +76,21 @@ class UserPreferences(BaseModel):
     preferred_currency: str
     favorite_categories: list[str] = Field(default_factory=list)
     price_range: Optional[tuple[float, float]] = None
+
+
+class AddToCartRequest(BaseModel):
+    item_id: str
+    quantity: int = 1
+    session_id: Optional[str] = None
+
+class AddToCartResponse(BaseModel):
+    status: str
+    session_id: Optional[str] = None
+
+class RemoveFromCartRequest(BaseModel):
+    item_id: str
+    session_id: Optional[str] = None
+
+class RemoveFromCartResponse(BaseModel):
+    status: str
+    session_id: Optional[str] = None
