@@ -1,6 +1,7 @@
 export enum WidgetType {
   PRODUCT = 'PRODUCT',
-  CART = 'CART'
+  CART = 'CART',
+  PRODUCT_SECTIONS = 'PRODUCT_SECTIONS'
 }
 
 export interface ProductWidgetData {

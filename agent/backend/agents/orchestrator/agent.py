@@ -96,9 +96,9 @@ async def call_agent(req: AgentCallRequest) -> AgentCallResponse:
         query = f"[user]: {req.question}"
         logger.info(f"[user]: {req.question}")
 
-        print("SESSION STATE: ===================================")
-        print(session)
-        print("===================================")
+        # print("SESSION STATE: ===================================")
+        # print(session)
+        # print("===================================")
         
         logger.info("Creating content object for agent")
         content = types.Content(role="user", parts=[types.Part(text=query)])

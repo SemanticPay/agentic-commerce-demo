@@ -20,6 +20,12 @@ class ProductList(BaseModel):
     products: list[Product] = Field(default_factory=list)
 
 
+class ProductSection(BaseModel):
+    title: str
+    description: str
+    products: list[Product] = Field(default_factory=list)
+
+
 class Cart(BaseModel):
     checkout_url: str
     subtotal_amount: Price
@@ -62,6 +68,7 @@ class QueryResponse(BaseModel):
 class WidgetType(str, Enum):
     PRODUCT = "PRODUCT"
     CART = "CART"
+    PRODUCT_SECTIONS = "PRODUCT_SECTIONS"
 
 
 class ProductWidget(Widget):

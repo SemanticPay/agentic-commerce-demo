@@ -1,9 +1,10 @@
 import logging
 import sys
+from typing import Any
 
 from google.adk.tools import ToolContext
 
-from agent.backend.types.types import Cart, CartWidget, Product, ProductWidget, Widget, WidgetType
+from agent.backend.types.types import Cart, CartWidget, Product, ProductWidget, ProductSection, Widget, WidgetType
 
 
 # Configure logging to stdout
@@ -13,6 +14,43 @@ logging.basicConfig(
     handlers=[logging.StreamHandler(sys.stdout)]
 )
 logger = logging.getLogger(__name__)
+
+
+def create_products_section_widget(raw_sections: list[dict[str, str]], tool_context: ToolContext) -> Widget:
+    sections: list[ProductSection] = []
+    for sec in raw_sections:
+        raw_products: list[dict[str, Any]] = sec.get("products", []) # type: ignore
+        products = []
+        for rp in raw_products:
+            try:
+                products.append(Product(**rp))
+            except Exception as e:
+                logger.error(f"Error parsing product data: {e}")
+        sections.append(ProductSection(
+            title=sec.get("title", ""),
+            description=sec.get("description", ""),
+            products=products,
+        ))
+
+    sections_widget_html = ""
+
+    for sec in sections:
+        sections_widget_html += f"<h2>{sec.title or "EMPTY"}</h2>\n"
+        sections_widget_html += f"<p>{sec.description or "EMPTY"}</p>\n"
+        sections_widget_html += "<div class='product-section'>\n"
+        raw_products = [prod.model_dump() for prod in sec.products]
+        prods_widgets = create_products_widgets(raw_products, tool_context)
+        for pw in prods_widgets:
+            sections_widget_html += pw.raw_html_string + "\n"
+        sections_widget_html += "</div>\n"
+
+    return Widget(
+        type=WidgetType.PRODUCT_SECTIONS,
+        data={
+            "sections": [sec.model_dump() for sec in sections]
+        },
+        raw_html_string=sections_widget_html
+    )
 
 
 def create_products_widgets(raw_prod_list: list[dict], tool_context: ToolContext) -> list[Widget]:

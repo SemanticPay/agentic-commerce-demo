@@ -195,6 +195,9 @@ def extract_widgets_from_function_payloads(function_payloads: list[FunctionPaylo
         elif payload.name == "create_cart_widget":
             logger.info(f"Adding cart widget from payload: {payload.name}")
             widgets.append(payload.payload)
+        elif payload.name == "create_products_section_widget":
+            logger.info(f"Adding product section widget from payload: {payload.name}")
+            widgets.append(payload.payload)
     logger.info(f"Widget extraction completed -- {len(widgets)} widget(s) extracted -- {widgets}")
     return widgets
 

@@ -1,13 +1,15 @@
 import logging
 import os
 import sys
+from typing import Any, Optional
 
 from google.adk.tools import ToolContext
 
 from agent.backend.client.base_types import GetProductRequest, SearchProductsRequest, StoreProvider
 from agent.backend.client.factory import get_storefront_client
 from agent.backend.client.interface import StoreFrontClient
-from agent.backend.types.types import Price, Product, ProductList
+from agent.backend.tools.interface.tools import create_products_widgets
+from agent.backend.types.types import Price, Product, ProductList, ProductSection
 
 # Configure logging to stdout
 logging.basicConfig(
@@ -26,6 +28,35 @@ storefront_client: StoreFrontClient = get_storefront_client(
     store_url=os.getenv("SHOPIFY_STOREFRONT_STORE_URL", "")
 )
 logger.info("Storefront client initialized successfully")
+
+
+def search_product_categories(categories: list[dict[str, str]], tool_context: ToolContext) -> list[ProductSection]:
+    """
+    categories: [
+        {
+            "title": "hats",
+            "description": "A variety of stylish hats.",
+            "query": "red hat",
+        },
+        {
+            "title": "shoes",
+            "description": "A variety of stylish shoes.",
+            "query": "black shoe",
+        },
+    ]
+    """
+
+    sections: list[ProductSection] = []
+    for cat in categories:
+        query = cat["query"]
+        prod_list = search_products(query, tool_context)
+        sections.append(ProductSection(
+            title=cat["title"],
+            description=cat["description"],
+            products=prod_list.products,
+        ))
+
+    return sections
 
 
 def search_products(query: str, tool_context: ToolContext) -> ProductList:
@@ -119,7 +150,7 @@ def search_products(query: str, tool_context: ToolContext) -> ProductList:
         raise
 
 
-def get_product_details(product_id: str = "", handle: str = "", tool_context: ToolContext = None) -> Product | None:
+def get_product_details(product_id: str = "", handle: str = "", tool_context: Optional[ToolContext] = None) -> Product | None:
     """Get detailed information for a specific product by ID or handle.
     
     This MCP tool allows AI agents to retrieve complete details about a single
