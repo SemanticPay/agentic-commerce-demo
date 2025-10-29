@@ -3,7 +3,7 @@ import sys
 from dotenv import load_dotenv
 from google.adk.agents import Agent
 
-from agent.backend.tools.cart.tools import  add_item_to_cart, create_shopify_cart_and_get_checkout_url, cart_get, remove_item_from_cart
+from agent.backend.tools.cart.tools import  add_item_to_cart, create_shopify_cart_and_get_checkout_url, remove_item_from_cart
 from agent.backend.tools.interface.tools import  create_cart_widget
 from agent.backend.agents.cart.prompt import PROMPT
 
