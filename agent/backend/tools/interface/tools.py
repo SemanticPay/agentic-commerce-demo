@@ -28,6 +28,7 @@ def create_products_section_widget(raw_sections: list[dict[str, str]], tool_cont
                 logger.error(f"Error parsing product data: {e}")
         sections.append(ProductSection(
             title=sec.get("title", ""),
+            subtitle=sec.get("subtitle", ""),
             description=sec.get("description", ""),
             products=products,
         ))
@@ -36,6 +37,7 @@ def create_products_section_widget(raw_sections: list[dict[str, str]], tool_cont
 
     for sec in sections:
         sections_widget_html += f"<h2>{sec.title or "EMPTY"}</h2>\n"
+        sections_widget_html += f"<h3>{sec.subtitle or "EMPTY"}</h3>\n"
         sections_widget_html += f"<p>{sec.description or "EMPTY"}</p>\n"
         sections_widget_html += "<div class='product-section'>\n"
         raw_products = [prod.model_dump() for prod in sec.products]
@@ -63,7 +65,7 @@ def create_products_widgets(raw_prod_list: list[dict], tool_context: ToolContext
         html_string = f"""
         <div className="product-image-container">
             <img 
-                src={prod.image_url} 
+                src={prod.image} 
                 alt={prod.title}
                 className="product-image"
             />
@@ -85,7 +87,7 @@ def create_products_widgets(raw_prod_list: list[dict], tool_context: ToolContext
                 "description": prod.description,
                 "price": prod.price.amount,
                 "currency": prod.price.currency_code,
-                "image_url": prod.image_url,
+                "image": prod.image,
             },
             raw_html_string=html_string
         ))

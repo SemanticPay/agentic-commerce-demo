@@ -6,7 +6,7 @@ import logging
 import sys
 from typing import Dict, Any, Optional
 
-from agent.backend.client.base_types import Address, AddressOption, BuyerIdentity, Cart, CartAddressInput, CartCreateRequest, CartCreateResponse, CartDeliveryInput, CartGetRequest, CartGetResponse, CartLineInput, GetProductRequest, GetProductResponse, GetProductsRequest, GetProductsResponse, Product, SearchProductsRequest, SearchProductsResponse
+from agent.backend.client.base_types import Address, AddressOption, Cart, CartAddressInput, CartCreateRequest, CartCreateResponse, CartGetRequest, CartGetResponse, CartLineInput, GetProductRequest, GetProductResponse, GetProductsRequest, GetProductsResponse, Product, SearchProductsRequest, SearchProductsResponse
 from agent.backend.client.interface import ProductsClient, StoreFrontClient
 
 # Configure logging to stdout
@@ -91,6 +91,7 @@ class ShopifyGraphQLClient(StoreFrontClient):
                         id
                         title
                         description
+                        onlineStoreUrl
                         images(first: 5) {
                             edges {
                                 node {
@@ -168,6 +169,12 @@ class ShopifyGraphQLClient(StoreFrontClient):
                     product["price"] = price
                     product.pop("priceRange")
                     logger.debug("Simplified price structure for single-variant product")
+
+
+                print("===================")
+                print("product", product)
+                print("===================")
+
                 
                 products.append(Product(**product))
                 logger.debug(f"Product {idx + 1} processed and added to list")
@@ -225,34 +232,6 @@ class ShopifyGraphQLClient(StoreFrontClient):
                             }
                         }
                     }
-                    buyerIdentity {
-                        email
-                        phone
-                        countryCode
-                    }
-                    deliveryGroups(first: 10) {
-                        edges {
-                            node {
-                                id
-                                selectedDeliveryOption {
-                                    handle
-                                    title
-                                }
-                                deliveryAddress {
-                                    ... on MailingAddress {
-                                        address1
-                                        address2
-                                        city
-                                        countryCode
-                                        zip
-                                        phone
-                                        firstName
-                                        lastName
-                                    }
-                                }
-                            }
-                        }
-                    }
                 }
                 userErrors {
                     field
@@ -265,8 +244,11 @@ class ShopifyGraphQLClient(StoreFrontClient):
         }
         """
         
+        # Only pass lines to the mutation
         variables = {
-            "input": req.model_dump(exclude_none=True, by_alias=True)
+            "input": {
+                "lines": [line.model_dump(by_alias=True) for line in (req.lines or [])]
+            }
         }
         
         logger.info("Prepared cart creation variables")
@@ -532,6 +514,7 @@ def test_storefront_client():
     logger.info("Starting Shopify client integration tests")
     logger.info("="*60)
     
+    load_dotenv()
     client = ShopifyGraphQLClient(store_url=os.getenv("SHOPIFY_STOREFRONT_STORE_URL", ""),)
     
     # Test 1: Search for products
@@ -554,29 +537,7 @@ def test_storefront_client():
     logger.info(f"Prepared {len(lines)} line items for cart")
     
     if lines:
-        cart_req = CartCreateRequest(
-            lines=lines,
-            buyerIdentity=BuyerIdentity(email="test@example.com"),
-            delivery=CartDeliveryInput(
-                addresses=[
-                    AddressOption(
-                        selected=True,
-                        address=CartAddressInput(
-                            deliveryAddress=Address(
-                                address1="123 Main St",
-                                address2="Apt 4B",
-                                city="New York",
-                                countryCode="US",
-                                zip="10001",
-                                firstName="John",
-                                lastName="Doe",
-                                phone="+1234567890",
-                            )
-                        )
-                    )
-                ]
-            ),
-        )
+        cart_req = CartCreateRequest(lines=lines)
         cart_resp = client.cart_create(cart_req)
         
         if cart_resp.user_errors or cart_resp.warnings:
@@ -679,6 +640,7 @@ class ShopifyAdminClient(ProductsClient):
                         id
                         title
                         description
+                        onlineStoreUrl
                         images(first: 5) {
                             edges {
                                 node {
@@ -816,5 +778,5 @@ def test_admin_client():
     print(products.model_dump_json(indent=2))
 
 if __name__ == "__main__":
-    # test_storefront_client()
+    test_storefront_client()
     test_admin_client()

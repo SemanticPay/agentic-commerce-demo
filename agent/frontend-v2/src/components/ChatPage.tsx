@@ -10,26 +10,26 @@ interface Message {
   text: string;
 }
 
-const initialMessages: Message[] = [
-  { id: 1, sender: "user", text: "Hey, I'm going on my first ski trip and need equipment." },
-  { id: 2, sender: "agent", text: "Nice! Let's get you ready. Do you already have any equipment, or are we starting from scratch?" },
-  { id: 3, sender: "user", text: "Starting from scratch." },
-  { id: 4, sender: "agent", text: "Got it. Where are you skiing—Alps, Rockies, or a smaller resort? Temperature and snow type help me pick the right gear." },
-  { id: 5, sender: "user", text: "Going to Val Thorens in January." },
-  { id: 6, sender: "agent", text: "Great. What's your height and weight so I can size them properly?" },
-  { id: 7, sender: "user", text: "178 cm, 72 kg." },
-  { id: 8, sender: "agent", text: "Perfect. You'll need skis around 165–170 cm. Do you want me to keep it budget-friendly or go for mid-range quality?" },
-  { id: 9, sender: "user", text: "Mid-range sounds good." },
-];
+// const initialMessages: Message[] = [
+//   { id: 1, sender: "user", text: "Hey, I'm going on my first ski trip and need equipment." },
+//   { id: 2, sender: "agent", text: "Nice! Let's get you ready. Do you already have any equipment, or are we starting from scratch?" },
+//   { id: 3, sender: "user", text: "Starting from scratch." },
+//   { id: 4, sender: "agent", text: "Got it. Where are you skiing—Alps, Rockies, or a smaller resort? Temperature and snow type help me pick the right gear." },
+//   { id: 5, sender: "user", text: "Going to Val Thorens in January." },
+//   { id: 6, sender: "agent", text: "Great. What's your height and weight so I can size them properly?" },
+//   { id: 7, sender: "user", text: "178 cm, 72 kg." },
+//   { id: 8, sender: "agent", text: "Perfect. You'll need skis around 165–170 cm. Do you want me to keep it budget-friendly or go for mid-range quality?" },
+//   { id: 9, sender: "user", text: "Mid-range sounds good." },
+// ];
 
 export default function ChatPage() {
-  const [messages, setMessages] = useState<Message[]>(initialMessages);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState("");
   const navigate = useNavigate();
   
   // Check if the last message is "Mid-range sounds good."
   const lastMessage = messages[messages.length - 1];
-  const showCurating = lastMessage?.sender === "user" && lastMessage?.text.toLowerCase().includes("mid-range sounds good");
+  // const showCurating = lastMessage?.sender === "user" && lastMessage?.text.toLowerCase().includes("mid-range sounds good"); // TODO: think further and bring back
 
   const handleSend = () => {
     if (!inputValue.trim()) return;
@@ -42,8 +42,13 @@ export default function ChatPage() {
     
     setMessages([...messages, newMessage]);
     setInputValue("");
+
+    // TODO: make call to the backend
+    // TODO: add the backend response to the messages list
+
     
     // Redirect to catalog page after sending any messag
+    // TODO: only redirect to catalog if there are any widgets
     setTimeout(() => {
       navigate("/catalog");
     }, 500);
@@ -98,8 +103,9 @@ export default function ChatPage() {
           </div>
         ))}
         
+        {/* TODO: bring back */}
         {/* Curating Indicator */}
-        {showCurating && (
+        {/* showCurating && (
           <div className="space-y-4">
             <div className="flex justify-start items-start gap-3 animate-in fade-in slide-in-from-bottom-4 duration-500">
               <div className="flex-shrink-0 mt-1">
@@ -123,7 +129,6 @@ export default function ChatPage() {
               </div>
             </div>
             
-            {/* View Catalog Button */}
             <div className="flex justify-center animate-in fade-in slide-in-from-bottom-4 duration-500" style={{ animationDelay: '800ms' }}>
               <Link to="/catalog">
                 <Button className="bg-gradient-to-r from-[#B7B1F2] to-[#FDB7EA] text-white hover:shadow-lg hover:scale-105 transition-all duration-200 rounded-2xl px-8 h-12">
@@ -133,7 +138,7 @@ export default function ChatPage() {
               </Link>
             </div>
           </div>
-        )}
+        ) */}
       </div>
 
       {/* Floating Input Widget */}
@@ -144,7 +149,7 @@ export default function ChatPage() {
             placeholder="Type your message..."
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
-            onKeyPress={handleKeyPress}
+            onKeyUp={handleKeyPress}
             className="w-full h-20 pl-6 pr-20 rounded-2xl border-0 bg-transparent text-gray-900 placeholder:text-gray-400 focus-visible:ring-0 focus-visible:outline-none transition-all duration-200"
           />
           <Button

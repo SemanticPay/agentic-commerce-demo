@@ -57,6 +57,7 @@ export default function HomePage() {
 
   const handleSearch = () => {
     // Navigate to chat page when user clicks search
+    // TODO: call the agent and get the response
     navigate("/chat");
   };
 
@@ -113,8 +114,9 @@ export default function HomePage() {
           </div>
         </div>
 
+        {/* TODO: bring back */}
         {/* Inspired For You Section */}
-        <div className="mt-16 space-y-6">
+        {/* <div className="mt-16 space-y-6">
           <div className="flex items-center justify-between">
             <h2 className="text-gray-800">Inspired for you</h2>
           </div>
@@ -140,7 +142,7 @@ export default function HomePage() {
             <CarouselPrevious className="border-0 bg-white text-gray-700 shadow-[0_2px_16px_rgba(183,177,242,0.15)] hover:bg-gradient-to-r hover:from-[#B7B1F2] hover:to-[#FDB7EA] hover:text-white hover:shadow-lg transition-all duration-200" />
             <CarouselNext className="border-0 bg-white text-gray-700 shadow-[0_2px_16px_rgba(183,177,242,0.15)] hover:bg-gradient-to-r hover:from-[#B7B1F2] hover:to-[#FDB7EA] hover:text-white hover:shadow-lg transition-all duration-200" />
           </Carousel>
-        </div>
+        </div> */}
       </main>
     </div>
   );

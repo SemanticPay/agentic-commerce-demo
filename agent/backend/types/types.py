@@ -13,7 +13,7 @@ class Product(BaseModel):
     title: str
     description: str
     price: Price
-    image_url: str
+    image: str
 
 
 class ProductList(BaseModel):
@@ -22,6 +22,7 @@ class ProductList(BaseModel):
 
 class ProductSection(BaseModel):
     title: str
+    subtitle: str
     description: str
     products: list[Product] = Field(default_factory=list)
 

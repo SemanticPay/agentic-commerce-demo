@@ -26,6 +26,7 @@ class Product(BaseModel):
     id: str
     title: str
     description: str
+    online_store_url: str = Field(default="", alias="onlineStoreUrl")
     images: list[str]
     price: Price
     price_range: PriceRange | None = Field(default=None, alias="priceRange")
@@ -41,13 +42,6 @@ class CartLineInput(BaseModel):
 
     quantity: int
     merchandise_id: str = Field(alias="merchandiseId")
-
-
-class BuyerIdentity(BaseModel):
-    model_config = ConfigDict(validate_by_name=True, validate_by_alias=True)
-
-    email: str | None = None
-    phone: str | None = None
 
 
 class Address(BaseModel):
@@ -72,10 +66,6 @@ class CartAddressInput(BaseModel):
 class AddressOption(BaseModel):
     address: CartAddressInput
     selected: bool
-
-
-class CartDeliveryInput(BaseModel):
-    addresses: list[AddressOption] | None = None
 
 
 class UserError(BaseModel):
@@ -136,8 +126,6 @@ class CartGetResponse(BaseModel):
 
 class CartCreateRequest(BaseModel):
     lines: list[CartLineInput] | None = None
-    buyer_identity: BuyerIdentity | None = Field(default=None, alias="buyerIdentity")
-    delivery: CartDeliveryInput | None = None
 
 
 class CartCreateResponse(BaseModel):

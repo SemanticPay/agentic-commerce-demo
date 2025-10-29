@@ -35,11 +35,13 @@ def search_product_categories(categories: list[dict[str, str]], tool_context: To
     categories: [
         {
             "title": "hats",
+            "subtitle": "Stylish Hats",
             "description": "A variety of stylish hats.",
             "query": "red hat",
         },
         {
             "title": "shoes",
+            "subtitle": "Stylish Shoes",
             "description": "A variety of stylish shoes.",
             "query": "black shoe",
         },
@@ -51,8 +53,9 @@ def search_product_categories(categories: list[dict[str, str]], tool_context: To
         query = cat["query"]
         prod_list = search_products(query, tool_context)
         sections.append(ProductSection(
-            title=cat["title"],
-            description=cat["description"],
+            title=cat.get("title", ""),
+            description=cat.get("description", ""),
+            subtitle=cat.get("subtitle", ""),
             products=prod_list.products,
         ))
 
@@ -87,7 +90,7 @@ def search_products(query: str, tool_context: ToolContext) -> ProductList:
                 - id (str): Unique product identifier (use this for cart_create)
                 - title (str): Product name/title
                 - description (str): Detailed product description (may contain HTML)
-                - image_url (str): URL to product image for display
+                - image (str): URL to product image for display
                 - price (Price): Product price with amount and currency_code
     
     Example AI Conversation Flow:
@@ -133,7 +136,7 @@ def search_products(query: str, tool_context: ToolContext) -> ProductList:
                     id=variant.id,
                     title=f"{prod.title} - {variant.title}",
                     description=prod.description,
-                    image_url=prod.images[0],
+                    image=prod.images[0],
                     price=Price(
                         amount=variant.price.amount,
                         currency_code=variant.price.currency_code,
@@ -182,7 +185,7 @@ def get_product_details(product_id: str = "", handle: str = "", tool_context: Op
             - id (str): Unique product variant identifier
             - title (str): Product name/title with variant details
             - description (str): Detailed product description (may contain HTML)
-            - image_url (str): URL to product image for display
+            - image (str): URL to product image for display
             - price (Price): Product price with amount and currency_code
             Returns None if product is not found or not published
     
@@ -268,7 +271,7 @@ def get_product_details(product_id: str = "", handle: str = "", tool_context: Op
             id=first_variant.id,
             title=f"{resp.product.title} - {first_variant.title}",
             description=resp.product.description,
-            image_url=resp.product.images[0] if resp.product.images else "",
+            image=resp.product.images[0] if resp.product.images else "",
             price=Price(
                 amount=first_variant.price.amount,
                 currency_code=first_variant.price.currency_code,

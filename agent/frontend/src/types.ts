@@ -10,7 +10,7 @@ export interface ProductWidgetData {
   description?: string
   price: number
   currency: string
-  image_url: string
+  image: string
 }
 
 export interface CartWidgetData {

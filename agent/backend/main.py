@@ -48,70 +48,48 @@ app.add_middleware(
 logger.info("CORS middleware added successfully")
 
 
-@app.get("/")
-async def root():
-    """Root endpoint with API information"""
-    logger.info("Root endpoint accessed")
-    return {
-        "message": "Shopping Agent API",
-        "version": "1.0.0",
-        "endpoints": {
-            "POST /query": "Send a question to the shopping agent with full chat context",
-            "GET /session/{session_id}": "Get chat history for a specific session",
-            "GET /health": "Health check endpoint",
-        },
-    }
+# @app.post("/add-to-cart", response_model=FunctionPayload, status_code=200)
+# async def add_to_cart(request: AddToCartRequest):
+#     """Add an item to the cart"""
+#     logger.info(f"Adding item {request.item_id} to cart")
+#     session_id = request.session_id or str(uuid.uuid4())
+#     logger.info(f"Session ID: {session_id}")
+
+#     if not session_id in session_id_to_cart.keys():
+#         session_id_to_cart[session_id] = {request.item_id: request.quantity}
+#     elif request.item_id not in session_id_to_cart[session_id].keys():
+#         session_id_to_cart[session_id][request.item_id] = request.quantity
+#     else:
+#         session_id_to_cart[session_id][request.item_id] = session_id_to_cart[session_id][request.item_id] + request.quantity
+
+#     logger.info("Building add to cart response")
+#     response = AddToCartResponse(
+#         status="success",
+#         session_id=session_id
+#     )
+#     logger.info("adding to cart completed successfully")
+#     logger.info("=" * 60)
+#     return response
 
 
-@app.get("/health")
-async def health_check():
-    """Health check endpoint"""
-    logger.info("Health check endpoint accessed")
-    return {"status": "healthy"}
+# @app.post("/remove-from-cart", response_model=FunctionPayload, status_code=200)
+# async def remove_from_cart(request: AddToCartRequest):
+#     """Add an item to the cart"""
+#     logger.info(f"Adding item {request.item_id} to cart")
+#     session_id = request.session_id or str(uuid.uuid4())
+#     logger.info(f"Session ID: {session_id}")
 
+#     if session_id in session_id_to_cart.keys():
+#         session_id_to_cart[session_id].pop(request.item_id)
 
-@app.post("/add-to-cart", response_model=FunctionPayload, status_code=200)
-async def add_to_cart(request: AddToCartRequest):
-    """Add an item to the cart"""
-    logger.info(f"Adding item {request.item_id} to cart")
-    session_id = request.session_id or str(uuid.uuid4())
-    logger.info(f"Session ID: {session_id}")
-
-    if not session_id in session_id_to_cart.keys():
-        session_id_to_cart[session_id] = {request.item_id: request.quantity}
-    elif request.item_id not in session_id_to_cart[session_id].keys():
-        session_id_to_cart[session_id][request.item_id] = request.quantity
-    else:
-        session_id_to_cart[session_id][request.item_id] = session_id_to_cart[session_id][request.item_id] + request.quantity
-
-    logger.info("Building add to cart response")
-    response = AddToCartResponse(
-        status="success",
-        session_id=session_id
-    )
-    logger.info("adding to cart completed successfully")
-    logger.info("=" * 60)
-    return response
-
-
-@app.post("/remove-from-cart", response_model=FunctionPayload, status_code=200)
-async def remove_from_cart(request: AddToCartRequest):
-    """Add an item to the cart"""
-    logger.info(f"Adding item {request.item_id} to cart")
-    session_id = request.session_id or str(uuid.uuid4())
-    logger.info(f"Session ID: {session_id}")
-
-    if session_id in session_id_to_cart.keys():
-        session_id_to_cart[session_id].pop(request.item_id)
-
-    logger.info("Building remove from cart response")
-    response = AddToCartResponse(
-        status="success",
-        session_id=session_id
-    )
-    logger.info("removing from completed successfully")
-    logger.info("=" * 60)
-    return response
+#     logger.info("Building remove from cart response")
+#     response = AddToCartResponse(
+#         status="success",
+#         session_id=session_id
+#     )
+#     logger.info("removing from completed successfully")
+#     logger.info("=" * 60)
+#     return response
 
 
 @app.post("/query", response_model=QueryResponse)
@@ -191,7 +169,7 @@ def extract_widgets_from_function_payloads(function_payloads: list[FunctionPaylo
         logger.info(f"Processing payload: {payload.name} --> {payload.payload}")
         if payload.name == "create_products_widgets":
             logger.info(f"Adding product widgets from payload: {payload.name} -- {len(payload.payload) if payload.payload else 0} items")
-            widgets.extend(payload.payload)
+            widgets.extend(payload.payload) # type: ignore
         elif payload.name == "create_cart_widget":
             logger.info(f"Adding cart widget from payload: {payload.name}")
             widgets.append(payload.payload)

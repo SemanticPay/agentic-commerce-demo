@@ -14,17 +14,17 @@ interface Message {
   image?: string;
 }
 
-const chatMessages: Message[] = [
-  { id: 1, sender: "user", text: "Hey, I'm going on my first ski trip and need equipment." },
-  { id: 2, sender: "agent", text: "Nice! Let's get you ready. Do you already have any equipment, or are we starting from scratch?" },
-  { id: 3, sender: "user", text: "Starting from scratch." },
-  { id: 4, sender: "agent", text: "Got it. Where are you skiing—Alps, Rockies, or a smaller resort? Temperature and snow type help me pick the right gear." },
-  { id: 5, sender: "user", text: "Going to Val Thorens in January." },
-  { id: 6, sender: "agent", text: "Great. What's your height and weight so I can size them properly?" },
-  { id: 7, sender: "user", text: "178 cm, 72 kg." },
-  { id: 8, sender: "agent", text: "Perfect. You'll need skis around 165–170 cm. Do you want me to keep it budget-friendly or go for mid-range quality?" },
-  { id: 9, sender: "user", text: "Mid-range sounds good." },
-];
+// const chatMessages: Message[] = [
+//   { id: 1, sender: "user", text: "Hey, I'm going on my first ski trip and need equipment." },
+//   { id: 2, sender: "agent", text: "Nice! Let's get you ready. Do you already have any equipment, or are we starting from scratch?" },
+//   { id: 3, sender: "user", text: "Starting from scratch." },
+//   { id: 4, sender: "agent", text: "Got it. Where are you skiing—Alps, Rockies, or a smaller resort? Temperature and snow type help me pick the right gear." },
+//   { id: 5, sender: "user", text: "Going to Val Thorens in January." },
+//   { id: 6, sender: "agent", text: "Great. What's your height and weight so I can size them properly?" },
+//   { id: 7, sender: "user", text: "178 cm, 72 kg." },
+//   { id: 8, sender: "agent", text: "Perfect. You'll need skis around 165–170 cm. Do you want me to keep it budget-friendly or go for mid-range quality?" },
+//   { id: 9, sender: "user", text: "Mid-range sounds good." },
+// ];
 
 interface CartItem {
   id: string;
@@ -40,45 +40,46 @@ interface CartItem {
 
 export default function CartPage() {
   const navigate = useNavigate();
-  const [messages, setMessages] = useState<Message[]>(chatMessages);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [showVisualization, setShowVisualization] = useState(false);
   const [fullscreenImage, setFullscreenImage] = useState(false);
-  const [cartItems, setCartItems] = useState<CartItem[]>([
-    {
-      id: "helmet-1",
-      name: "Smith Vantage MIPS",
-      description: "Dual ventilation zones, advanced safety.",
-      category: "Helmet",
-      price: 289,
-      originalPrice: 340,
-      discount: 15,
-      quantity: 1,
-      image: "https://images.unsplash.com/photo-1612964627570-769abf00d41f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzbWl0aCUyMHNraSUyMGhlbG1ldHxlbnwxfHx8fDE3NjEwNjE3MDN8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
-    },
-    {
-      id: "goggle-2",
-      name: "Smith I/O Mag",
-      description: "Quick lens swap system.",
-      category: "Goggles",
-      price: 249,
-      originalPrice: 299,
-      discount: 17,
-      quantity: 1,
-      image: "https://images.unsplash.com/photo-1614270270735-e93b1234fc7c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzbWl0aCUyMGdvZ2dsZXMlMjBzbm93fGVufDF8fHx8MTc2MTA2MTcwNXww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
-    },
-    {
-      id: "boot-2",
-      name: "Salomon S/Pro 100",
-      description: "Custom fit shell for all-day comfort.",
-      category: "Boots",
-      price: 449,
-      originalPrice: 549,
-      discount: 18,
-      quantity: 1,
-      image: "https://images.unsplash.com/photo-1645999140947-db7546fecb30?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzYWxvbW9uJTIwc2tpJTIwYm9vdHN8ZW58MXx8fHwxNzYxMDYxNzA2fDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
-    },
-  ]);
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  // const [cartItems, setCartItems] = useState<CartItem[]>([
+  //   {
+  //     id: "helmet-1",
+  //     name: "Smith Vantage MIPS",
+  //     description: "Dual ventilation zones, advanced safety.",
+  //     category: "Helmet",
+  //     price: 289,
+  //     originalPrice: 340,
+  //     discount: 15,
+  //     quantity: 1,
+  //     image: "https://images.unsplash.com/photo-1612964627570-769abf00d41f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzbWl0aCUyMHNraSUyMGhlbG1ldHxlbnwxfHx8fDE3NjEwNjE3MDN8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
+  //   },
+  //   {
+  //     id: "goggle-2",
+  //     name: "Smith I/O Mag",
+  //     description: "Quick lens swap system.",
+  //     category: "Goggles",
+  //     price: 249,
+  //     originalPrice: 299,
+  //     discount: 17,
+  //     quantity: 1,
+  //     image: "https://images.unsplash.com/photo-1614270270735-e93b1234fc7c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzbWl0aCUyMGdvZ2dsZXMlMjBzbm93fGVufDF8fHx8MTc2MTA2MTcwNXww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
+  //   },
+  //   {
+  //     id: "boot-2",
+  //     name: "Salomon S/Pro 100",
+  //     description: "Custom fit shell for all-day comfort.",
+  //     category: "Boots",
+  //     price: 449,
+  //     originalPrice: 549,
+  //     discount: 18,
+  //     quantity: 1,
+  //     image: "https://images.unsplash.com/photo-1645999140947-db7546fecb30?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzYWxvbW9uJTIwc2tpJTIwYm9vdHN8ZW58MXx8fHwxNzYxMDYxNzA2fDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
+  //   },
+  // ]);
 
   const handleVisualize = () => {
     setShowVisualization(true);
@@ -106,6 +107,7 @@ export default function CartPage() {
   };
 
   const removeItem = (id: string) => {
+    // TODO: call the agent to remove item from cart
     setCartItems(items => items.filter(item => item.id !== id));
   };
 
@@ -162,8 +164,9 @@ export default function CartPage() {
               </div>
             ))}
             
+            {/* TODO: bring back */}
             {/* Query Box */}
-            <div className="mx-4 mt-4 bg-white rounded-2xl p-3 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
+            {/* <div className="mx-4 mt-4 bg-white rounded-2xl p-3 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
                   <Search className="w-3.5 h-3.5 text-gray-500" />
@@ -174,10 +177,11 @@ export default function CartPage() {
               <p className="text-gray-600 text-[13px] leading-relaxed italic">
                 Find mid-range ski equipment for a beginner skier (178 cm, 72 kg) going to Val Thorens in January — include skis sized around 165–170 cm, helmet, goggles, and boots suitable for cold Alpine snow.
               </p>
-            </div>
+            </div> */}
 
+            {/* TODO: bring back */}
             {/* Visualization Result */}
-            {showVisualization && (
+            {/* {showVisualization && (
               <div className="flex justify-start items-start gap-2 mx-4 mt-4">
                 <div className="flex-shrink-0 mt-1">
                   <div className="w-6 h-6 rounded-full bg-white flex items-center justify-center">
@@ -208,7 +212,7 @@ export default function CartPage() {
                   </p>
                 </div>
               </div>
-            )}
+            )} */}
           </div>
 
           {/* Input Widget */}
@@ -219,7 +223,7 @@ export default function CartPage() {
                 placeholder="Type..."
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
-                onKeyPress={handleKeyPress}
+                onKeyUp={handleKeyPress}
                 className="w-full h-14 pl-4 pr-14 rounded-2xl border-0 bg-transparent text-gray-900 placeholder:text-gray-400 focus-visible:ring-0 focus-visible:outline-none text-[14px]"
               />
               <Button
@@ -245,15 +249,16 @@ export default function CartPage() {
               </p>
             </div>
             
+            {/* TODO: bring back */}
             {/* AI Visualization Button */}
-            <Button 
+            {/* <Button 
               onClick={handleVisualize}
               disabled={showVisualization}
               className="bg-black text-white hover:bg-gray-800 hover:shadow-lg hover:scale-[1.02] transition-all duration-300 rounded-xl h-10 px-4 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Wand2 className="w-4 h-4" />
               <span>Visualize My Fit</span>
-            </Button>
+            </Button> */}
           </div>
 
           {/* Cart Items */}
@@ -279,13 +284,14 @@ export default function CartPage() {
                       </div>
                       
                       <div className="flex gap-1">
-                        <Button
+                        {/* TODO: bring back */}
+                        {/* <Button
                           size="icon"
                           variant="ghost"
                           className="h-7 w-7 rounded-lg hover:bg-gray-100 transition-colors"
                         >
                           <Edit className="w-3 h-3 text-gray-600" />
-                        </Button>
+                        </Button> */}
                         <Button
                           size="icon"
                           variant="ghost"
@@ -300,40 +306,44 @@ export default function CartPage() {
                     <div className="flex items-end justify-between mt-2">
                       {/* Quantity Controls */}
                       <div className="flex items-center gap-1.5">
-                        <Button
+                        {/* TODO: bring back */}
+                        {/* <Button
                           size="icon"
                           onClick={() => updateQuantity(item.id, -1)}
                           className="h-7 w-7 rounded-lg bg-gray-100 hover:bg-gray-200 text-black transition-colors"
                         >
                           <Minus className="w-3 h-3" />
-                        </Button>
-                        <span className="text-black min-w-[20px] text-center text-[13px]">{item.quantity}</span>
-                        <Button
+                        </Button> */}
+                        <span className="text-black min-w-[20px] text-center text-[13px]">In cart: {item.quantity}</span>
+                        {/* TODO: bring back */}
+                        {/* <Button
                           size="icon"
                           onClick={() => updateQuantity(item.id, 1)}
                           className="h-7 w-7 rounded-lg bg-gray-100 hover:bg-gray-200 text-black transition-colors"
                         >
                           <Plus className="w-3 h-3" />
-                        </Button>
+                        </Button> */}
                       </div>
 
                       {/* Price */}
                       <div className="text-right">
                         <div className="flex items-center gap-1.5">
-                          {item.originalPrice && (
+                          {/* TODO: bring back */}
+                          {/* {item.originalPrice && (
                             <span className="text-gray-400 text-[12px] line-through">
                               ${item.originalPrice}
                             </span>
-                          )}
+                          )} */}
                           <span className="text-black text-[15px]">
                             ${item.price}
                           </span>
                         </div>
-                        {item.discount && (
+                        {/* TODO: bring back */}
+                        {/* {item.discount && (
                           <span className="inline-block px-1.5 py-0.5 bg-[#FBF3B9] text-black text-[9px] rounded mt-0.5">
                             {item.discount}% off
                           </span>
-                        )}
+                        )} */}
                       </div>
                     </div>
                   </div>
@@ -349,12 +359,13 @@ export default function CartPage() {
                 <span className="text-gray-600">Subtotal</span>
                 <span className="text-black">${subtotal}</span>
               </div>
-              {totalSavings > 0 && (
+              {/* TODO: bring back */}
+              {/* {totalSavings > 0 && (
                 <div className="flex items-center justify-between text-[14px]">
                   <span className="text-gray-600">Savings</span>
                   <span className="text-green-600">-${totalSavings}</span>
                 </div>
-              )}
+              )} */}
               <div className="flex items-center justify-between text-[13px]">
                 <span className="text-gray-600">Shipping</span>
                 <span className="text-gray-600">At checkout</span>
@@ -383,13 +394,15 @@ export default function CartPage() {
             >
               <CreditCard className="w-4 h-4" />
               Proceed to Checkout
+              {/* TODO: link to the checkout URL */}
             </Button>
           </div>
         </div>
       </div>
 
+      {/* TODO: bring back */}
       {/* Fullscreen Image Dialog */}
-      <Dialog open={fullscreenImage} onOpenChange={setFullscreenImage}>
+      {/* <Dialog open={fullscreenImage} onOpenChange={setFullscreenImage}>
         <DialogContent className="max-w-[95vw] max-h-[95vh] p-0 bg-black/95 border-0">
           <div className="flex items-center justify-center w-full h-full">
             <ImageWithFallback
@@ -399,7 +412,7 @@ export default function CartPage() {
             />
           </div>
         </DialogContent>
-      </Dialog>
+      </Dialog> */}
     </div>
   );
 }
