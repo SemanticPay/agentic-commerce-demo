@@ -5,7 +5,7 @@ from typing import Any
 from google.adk.tools import ToolContext
 
 from agent.backend.state import keys
-from agent.backend.types.types import Cart, CartWidget, Product, ProductWidget, ProductSection, Widget, WidgetType
+from agent.backend.types.types import Cart, CartWidget, Product, ProductSection, ProductWidget, StateCart, Widget, WidgetType
 
 
 # Configure logging to stdout

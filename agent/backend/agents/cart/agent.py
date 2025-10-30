@@ -3,7 +3,7 @@ import sys
 from dotenv import load_dotenv
 from google.adk.agents import Agent
 
-from agent.backend.tools.cart.tools import  add_item_to_cart, create_shopify_cart_and_get_checkout_url, remove_item_from_cart
+from agent.backend.tools.cart.tools import  add_item_to_cart, create_store_cart_and_get_checkout_url, remove_item_from_cart
 from agent.backend.tools.interface.tools import  create_cart_widget
 from agent.backend.agents.cart.prompt import PROMPT
 
@@ -30,9 +30,8 @@ cart_agent = Agent(
             tools=[
                 add_item_to_cart,
                 remove_item_from_cart,
-                create_shopify_cart_and_get_checkout_url,
+                create_store_cart_and_get_checkout_url,
                 create_cart_widget,
-                # cart_get,
             ]
         )
 logger.info("cart-agent created successfully")

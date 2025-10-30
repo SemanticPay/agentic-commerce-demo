@@ -1,7 +1,7 @@
 import logging
 import os
 import sys
-from typing import Any, Optional
+from typing import Optional
 
 from google.adk.tools import ToolContext
 
@@ -118,7 +118,7 @@ def search_products(query: str) -> ProductList:
     
     except Exception as e:
         logger.error(f"Error in search_products: {str(e)}", exc_info=True)
-        raise
+        return ProductList()
 
 
 def get_product_details(product_id: str, tool_context: Optional[ToolContext] = None) -> Optional[Product]:
@@ -222,4 +222,4 @@ def get_product_details(product_id: str, tool_context: Optional[ToolContext] = N
     
     except Exception as e:
         logger.error(f"Error in get_product_details: {str(e)}", exc_info=True)
-        raise
+        return None

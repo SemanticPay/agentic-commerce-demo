@@ -85,6 +85,17 @@ class SearchCategory(BaseModel):
     description: str
     query: str
 
+class StateCartProduct(BaseModel):
+    id: str
+    quantity: int
+    title: str
+    description: str
+    image_url: str
+    price: Price
+
+class StateCart(BaseModel):
+    id_to_product: dict[str, StateCartProduct] = Field(default_factory=dict)
+
 class AddToCartRequest(BaseModel):
     item_id: str
     quantity: int = 1
