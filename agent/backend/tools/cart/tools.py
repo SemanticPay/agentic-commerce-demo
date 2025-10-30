@@ -1,15 +1,16 @@
 import logging
 import os
 import sys
+from typing import Optional
 
 
 from google.adk.tools import ToolContext
 
 from agent.backend.state import keys
-from agent.backend.client.base_types import Address, AddressOption, CartAddressInput, CartCreateRequest, CartGetRequest, CartLineInput, StoreProvider
+from agent.backend.client.base_types import  CartCreateRequest, CartLineInput, GetProductRequest, StoreProvider
 from agent.backend.client.factory import get_storefront_client
 from agent.backend.client.interface import StoreFrontClient
-from agent.backend.types.types import Cart, Price
+from agent.backend.types.types import Cart, Price, StateCart, StateCartProduct
 
 
 # Configure logging to stdout
@@ -37,47 +38,74 @@ def add_item_to_cart(
     tool_context: ToolContext,
 ) -> None:
     if quantity <= 0:
-        raise ValueError("Quantity must be greater than zero")
+        logger.error(f"Invalid quantity {quantity} for item ID {item_id}")
+        return
 
-    cart = tool_context.state.get(keys.CART_STATE_KEY, {})
-    cart[item_id] = cart.get(item_id, 0) + quantity
-    tool_context.state[keys.CART_STATE_KEY] = cart
-    logger.info(f"Added item {item_id} (qty: {quantity})")
+    state_cart: StateCart = tool_context.state.get(keys.CART_STATE_KEY, StateCart())
+
+    cart_product: StateCartProduct = state_cart.id_to_product.get(item_id) # type: ignore
+    if cart_product is None:
+        logger.info(f"Fetching product details for item ID: {item_id}")
+        resp = storefront_client.get_product(req=GetProductRequest(id=item_id))
+        if resp.product is None:
+            logger.error(f"Product with ID {item_id} not found in store")
+            return
+
+        cart_product = StateCartProduct(
+            id=item_id,
+            quantity=0,
+            title=resp.product.title,
+            description=resp.product.description,
+            image_url=resp.product.images[0] if resp.product.images else "",
+            price=Price(amount=resp.product.price.amount, currency_code=resp.product.price.currency_code), 
+        )
+
+    cart_product.quantity += quantity
+    state_cart.id_to_product[item_id] = cart_product
+    tool_context.state[keys.CART_STATE_KEY] = state_cart
+    logger.info(f"Added item {item_id} to state cart (qty: {quantity})")
 
 
 def remove_item_from_cart(
     item_id: str,
     tool_context: ToolContext,
 ) -> None:
-    if item_id in tool_context.state.get(keys.CART_STATE_KEY, {}):
-        del tool_context.state[keys.CART_STATE_KEY][item_id]
-        logger.info(f"Removed item {item_id}.")
+    state_cart: StateCart = tool_context.state.get(keys.CART_STATE_KEY, StateCart())
+    if item_id in state_cart.id_to_product:
+        del state_cart.id_to_product[item_id]
+        tool_context.state[keys.CART_STATE_KEY] = state_cart
+        logger.info(f"Removed item {item_id} from state cart")
         return
 
     logger.info("Item not found in cart; nothing to remove")
 
 
-def create_shopify_cart_and_get_checkout_url(
+def create_store_cart_and_get_checkout_url(
     tool_context: ToolContext,
 ) -> None:
-    logger.info("create_shopify_cart_and_get_checkout_url called")
+    logger.info("create_store_cart_and_get_checkout_url called")
 
-    state_cart: dict[str, int] = tool_context.state.get(keys.CART_STATE_KEY, {})
-    if not state_cart:
-        raise Exception("No items in state_cart to create")
+    state_cart: StateCart = tool_context.state.get(keys.CART_STATE_KEY, StateCart())
+    if len(state_cart.id_to_product) == 0:
+        logger.info("State cart is empty; no items to add to store cart")
+        return
 
-    logger.info(f"Items requested: {len(state_cart)} product(s)")
+    logger.info(f"Items requested: {len(state_cart.id_to_product)} product(s)")
     
     try:
         logger.info("Building state_cart line items")
         lines = []
-        for item_id, quantity in state_cart.items():
+        for product in state_cart.id_to_product.values():
             lines.append(CartLineInput(
-                quantity=quantity,
-                merchandiseId=item_id,
+                quantity=product.quantity,
+                merchandiseId=product.id,
             ))
-            logger.debug(f"Added line item: {item_id} (qty: {quantity})")
+            logger.debug(f"Added line item: {product.id} (qty: {product.quantity})")
         logger.info(f"Created {len(lines)} cart line item(s)")
+
+        if len(lines) == 0:
+            logger.info("No line items to add to cart. Aborting store cart creation.")
+            return
 
         logger.info("Sending cart creation request to storefront client")
         resp = storefront_client.cart_create(req=CartCreateRequest(
@@ -86,13 +114,16 @@ def create_shopify_cart_and_get_checkout_url(
         logger.info("Cart created successfully on storefront")
 
         if resp.user_errors:
-            raise Exception(f"User errors during cart creation: {resp.user_errors}")
+            logger.error(f"User errors during cart creation: {resp.user_errors}")
+            return
+            
 
         if resp.warnings:
             logger.warning(f"Warnings during cart creation: {resp.warnings}")
 
         if not resp.cart:
-            raise Exception("No cart data returned from storefront")
+            logger.error("No cart returned from storefront after creation")
+            return
 
         logger.info("Building cart response object")
         cart = Cart(
@@ -118,109 +149,8 @@ def create_shopify_cart_and_get_checkout_url(
         logger.info(f"Checkout URL: {cart.checkout_url}")
 
         logger.info(f"Setting cart in state")
-        tool_context.state[keys.SHOPIFY_CART] = cart
+        tool_context.state[keys.STORE_CART] = cart
     
     except Exception as e:
-        logger.error(f"Error in create_shopify_cart_and_get_checkout_url: {str(e)}", exc_info=True)
-        raise
-
-# def cart_get(cart_id: str, tool_context: ToolContext) -> Cart:
-#     """Retrieve an existing shopping cart by its unique identifier.
-    
-#     This MCP tool allows AI agents to fetch the current state of a previously
-#     created cart, including all items, quantities, and pricing information.
-#     Useful for resuming shopping sessions or checking cart status.
-    
-#     **AI Agent Instructions:**
-#     - Use this tool to retrieve a cart that was created earlier
-#     - The cart_id comes from the cart returned by cart_create()
-#     - Carts may expire after inactivity (typically 10-30 days)
-#     - If cart is not found, it may have expired - create a new one
-#     - Use this to show the user their current cart contents
-#     - Prices may have changed since cart creation
-    
-#     **Common Use Cases:**
-#     1. User says "What's in my cart?" or "Show my cart"
-#     2. Resuming a previous shopping session
-#     3. Verifying cart contents before directing to checkout
-#     4. Checking updated prices or availability
-    
-#     Args:
-#         cart_id (str): The unique cart identifier returned from cart_create().
-#             Format is platform-specific.
-#             Example: "gid://shopify/Cart/abc123def456"
-    
-#     Returns:
-#         Cart: Cart object containing:
-#             - checkout_url (str): URL to complete checkout
-#             - subtotal_amount (Price): Cart subtotal before tax
-#             - tax_amount (Price | None): Tax amount if calculated
-#             - total_amount (Price): Final total amount
-    
-#     Example AI Conversation Flow:
-#         User: "What's in my cart?"
-#         AI: [calls cart_get(cart_id="gid://shopify/Cart/abc123")]
-#         AI: "Your cart total is $91.98 (subtotal: $85.00, tax: $6.98).
-#              Ready to checkout? Here's your link: [checkout_url]"
-        
-#         User: "Can you check my cart from earlier?"
-#         AI: [calls cart_get with saved cart_id]
-#         AI: [if error] "I couldn't find that cart - it may have expired.
-#              Would you like to create a new one?"
-    
-#     Example Usage:
-#         >>> # Get a cart by ID
-#         >>> cart = cart_get(cart_id="gid://shopify/Cart/abc123")
-#         >>> print(f"Subtotal: ${cart.subtotal_amount.amount}")
-#         >>> print(f"Tax: ${cart.tax_amount.amount if cart.tax_amount else 0}")
-#         >>> print(f"Total: ${cart.total_amount.amount}")
-#         >>> print(f"Checkout: {cart.checkout_url}")
-    
-#     Raises:
-#         Exception: If cart retrieval fails due to:
-#             - Cart not found (invalid or expired ID)
-#             - Network/API errors
-#             - Invalid cart_id format
-    
-#     Note:
-#         - Cart IDs are temporary and expire after inactivity
-#         - Prices may change between creation and retrieval
-#         - Out-of-stock items may be removed automatically by some platforms
-#         - The checkout URL remains valid as long as the cart exists
-#         - Some platforms may update tax calculations when retrieving cart
-#     """
-#     logger.info(f"cart_get called with cart_id: {cart_id}")
-    
-#     try:
-#         logger.info("Sending cart retrieval request to storefront client")
-#         resp = storefront_client.cart_get(req=CartGetRequest(id=cart_id))
-#         logger.info("Cart retrieved successfully from storefront")
-
-#         logger.info("Building cart response object")
-#         cart = Cart(
-#             checkout_url=resp.cart.checkout_url, 
-#             subtotal_amount=Price(
-#                 amount=resp.cart.cost.subtotal_amount.amount,
-#                 currency_code=resp.cart.cost.subtotal_amount.currency_code,
-#             ),
-#             tax_amount=Price(
-#                 amount=resp.cart.cost.total_tax_amount.amount,
-#                 currency_code=resp.cart.cost.total_tax_amount.currency_code,
-#             ) if resp.cart.cost.total_tax_amount else None,
-#             total_amount=Price(
-#                 amount=resp.cart.cost.total_amount.amount,
-#                 currency_code=resp.cart.cost.total_amount.currency_code,
-#             ),
-#         )
-        
-#         logger.info(f"Cart retrieved - Subtotal: {cart.subtotal_amount.amount} {cart.subtotal_amount.currency_code}")
-#         if cart.tax_amount:
-#             logger.info(f"Tax: {cart.tax_amount.amount} {cart.tax_amount.currency_code}")
-#         logger.info(f"Total: {cart.total_amount.amount} {cart.total_amount.currency_code}")
-#         logger.info(f"Checkout URL: {cart.checkout_url}")
-
-#         return cart
-    
-#     except Exception as e:
-#         logger.error(f"Error in cart_get: {str(e)}", exc_info=True)
-#         raise
+        logger.error(f"Error in create_store_cart_and_get_checkout_url: {str(e)}", exc_info=True)
+        return

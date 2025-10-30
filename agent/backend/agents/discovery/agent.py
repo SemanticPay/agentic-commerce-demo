@@ -3,8 +3,8 @@ import sys
 from dotenv import load_dotenv
 from google.adk.agents import Agent
 
-from agent.backend.tools.product.tools import search_product_categories, search_products, get_product_details
-from agent.backend.tools.interface.tools import create_products_section_widget, create_products_widgets
+from agent.backend.tools.product.tools import search_product_categories
+from agent.backend.tools.interface.tools import create_products_section_widget
 from agent.backend.agents.discovery.prompt import PROMPT
 
 
@@ -30,9 +30,6 @@ discovery_agent = Agent(
             tools=[
                 search_product_categories,
                 create_products_section_widget,
-                # search_products,
-                # get_product_details,
-                # create_products_widgets,
             ]
         )
 logger.info("discovery-agent created successfully")

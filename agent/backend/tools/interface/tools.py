@@ -5,7 +5,7 @@ from typing import Any
 from google.adk.tools import ToolContext
 
 from agent.backend.state import keys
-from agent.backend.types.types import Cart, CartWidget, Product, ProductWidget, ProductSection, Widget, WidgetType
+from agent.backend.types.types import Cart, CartWidget, Product, ProductSection, ProductWidget, StateCart, Widget, WidgetType
 
 
 # Configure logging to stdout
@@ -18,7 +18,14 @@ logger = logging.getLogger(__name__)
 
 
 def create_products_section_widget(tool_context: ToolContext) -> Widget:
-    sections = tool_context.state.get(keys.PRODUCT_SECTIONS_STATE_KEY, [])
+    sections: list[ProductSection] = tool_context.state.get(keys.PRODUCT_SECTIONS_STATE_KEY, [])
+    if len(sections) == 0:
+        logger.error("No product sections found in state")
+        return Widget(
+            type=WidgetType.PRODUCT_SECTIONS,
+            data={"sections": []},
+            raw_html_string="<p>No product sections available.</p>"
+        )
 
     sections_widget_html = ""
     for sec in sections:
@@ -82,23 +89,59 @@ def create_products_widgets(raw_prod_list: list[dict], tool_context: ToolContext
     return ws
 
 def create_cart_widget(tool_context: ToolContext) -> Widget:
-    cart = tool_context.state[keys.SHOPIFY_CART]
-    logger.info(f"Creating cart widget from state cart: {cart}")
+    store_cart: Cart = tool_context.state.get(keys.STORE_CART)
+    state_cart: StateCart = tool_context.state.get(keys.CART_STATE_KEY, StateCart())
+
+    if store_cart is None:
+        logger.info("No store cart found in state; cannot create cart widget")
+        if state_cart is None or len(state_cart.id_to_product) == 0:
+            logger.error("State cart is also empty; cannot create cart widget")
+            return Widget(
+                type=WidgetType.CART,
+                data={},
+                raw_html_string="<p>Your cart is empty.</p>"
+            )
+        else:
+            logger.error("State cart has items but no store cart; cannot create cart widget")
+            return Widget(
+                type=WidgetType.CART,
+                data={},
+                raw_html_string="<p>Your cart is empty.</p>"
+            )
+
+
+    logger.info(f"Creating cart widget from state cart: {store_cart}")
 
     logger.debug("Creating cart widget")
-    subtotal = cart.subtotal_amount
-    tax = cart.tax_amount
-    total = cart.total_amount
+    subtotal = store_cart.subtotal_amount
+    tax = store_cart.tax_amount
+    total = store_cart.total_amount
     
     logger.debug(f"Cart details - Subtotal: {subtotal.amount} {subtotal.currency_code}, " +
                 f"Tax: {tax.amount if tax else 0} {tax.currency_code if tax else 0}, " +
                 f"Total: {total.amount} {total.currency_code}")
+
+    # TODO: Retrieve line items from store cart instead of using state cart, as these two can be out of sync
+    cart_products_html = ""
+    for product in state_cart.id_to_product.values():
+        cart_products_html += f"""
+        <div class="cart-product-item">
+            <span class="cart-product-title">{product.title}</span>
+            <span class="cart-product-quantity">Qty: {product.quantity}</span>
+            <span class="cart-product-price">
+                {formatPrice(product.price.amount * product.quantity, product.price.currency_code)}
+            </span>
+        </div>
+        """
 
     html_string = f"""
     <div class="cart-header">
         <h3>Cart Summary</h3>
     </div>
     <div class="cart-details">
+        <div class="cart-products">
+            {cart_products_html}
+        </div>
         <div class="cart-line-item">
             <span class="cart-label">Subtotal:</span>
             <span class="cart-value">
@@ -120,7 +163,7 @@ def create_cart_widget(tool_context: ToolContext) -> Widget:
     </div>
     <div class="cart-actions">
         <a 
-        href={cart.checkout_url} 
+        href={store_cart.checkout_url} 
         target="_blank" 
         rel="noopener noreferrer"
         class="checkout-button"
@@ -133,7 +176,7 @@ def create_cart_widget(tool_context: ToolContext) -> Widget:
     widget = CartWidget(
         type=WidgetType.CART,
         data={
-            "checkout_url": cart.checkout_url,
+            "checkout_url": store_cart.checkout_url,
             "subtotal_amount": subtotal.amount,
             "subtotal_amount_currency_code": subtotal.currency_code,
             "tax_amount": tax.amount if tax else 0,

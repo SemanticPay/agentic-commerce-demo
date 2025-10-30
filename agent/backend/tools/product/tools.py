@@ -1,7 +1,7 @@
 import logging
 import os
 import sys
-from typing import Any, Optional
+from typing import Optional
 
 from google.adk.tools import ToolContext
 
@@ -10,7 +10,6 @@ from agent.backend.client.factory import get_storefront_client
 from agent.backend.client.interface import StoreFrontClient
 from agent.backend.state import keys
 from agent.backend.tools.context.tools import get_search_categories
-from agent.backend.tools.interface.tools import create_products_widgets
 from agent.backend.types.types import Price, Product, ProductList, ProductSection
 
 # Configure logging to stdout
@@ -138,7 +137,7 @@ def search_products(query: str) -> ProductList:
     
     except Exception as e:
         logger.error(f"Error in search_products: {str(e)}", exc_info=True)
-        raise
+        return ProductList()
 
 
 def get_product_details(product_id: str, tool_context: Optional[ToolContext] = None) -> Optional[Product]:
@@ -242,4 +241,4 @@ def get_product_details(product_id: str, tool_context: Optional[ToolContext] = N
     
     except Exception as e:
         logger.error(f"Error in get_product_details: {str(e)}", exc_info=True)
-        raise
+        return None

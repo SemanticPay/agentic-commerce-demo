@@ -1,8 +1,20 @@
 """
 CART_STATE_KEY is the key used to store cart information in the ToolContext state in the following format:
 {
-    "item_id_1": quantity_1,
-    "item_id_2": quantity_2,
+    "item_id_1": {
+        "quantity": 1,
+        "title": title,
+        "description": description,
+        "image_url": image_url,
+        "price": price,
+    },
+    "item_id_2": {
+        "quantity": 1,
+        "title": title,
+        "description": description,
+        "image_url": image_url,
+        "price": price,
+    },
     ...
 }
 """
@@ -29,12 +41,13 @@ CART_STATE_KEY = "X-cart"
 SEARCH_CATEGORIES_STATE_KEY = "X-search-categories"
 
 """
-TODO
+Store cart object stored in the ToolContext state
 """
-SHOPIFY_CART = "X-shopify-cart"
+STORE_CART = "X-store-cart"
 
 
 """
-a list of ProductSection objects stored in the ToolContext state
+A list of ProductSection objects stored in the ToolContext state
+@type: list[ProductSection]
 """
 PRODUCT_SECTIONS_STATE_KEY = "X-product-sections"
