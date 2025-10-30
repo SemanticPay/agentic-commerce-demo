@@ -78,11 +78,27 @@ def create_products_widgets(raw_prod_list: list[dict], tool_context: ToolContext
     )]
 
 def create_cart_widget(tool_context: ToolContext) -> Widget:
-    internal_cart = tool_context.state.get(keys.CART_STATE_KEY, {})
-    shopify_cart = tool_context.state.get(keys.SHOPIFY_CART, None)
+    store_cart_data: Cart = tool_context.state.get(keys.STORE_CART, {})
+    store_cart = Cart(**store_cart_data) if store_cart_data else None
+    state_cart_data = tool_context.state.get(keys.CART_STATE_KEY, {})
+    state_cart: StateCart = StateCart(**state_cart_data) if state_cart_data else StateCart()
 
-    logger.info(f"Rendering cart widget with {len(internal_cart)} internal items")
-    checkout_url = getattr(shopify_cart, "checkout_url", "#")
+    if store_cart is None:
+        logger.info("No store cart found in state; cannot create cart widget")
+        if state_cart is None or len(state_cart.id_to_product.keys()) == 0:
+            logger.error("State cart is also empty; cannot create cart widget")
+            return Widget(
+                type=WidgetType.CART,
+                data={},
+                raw_html_string="<p>Your cart is empty.</p>"
+            )
+        else:
+            logger.error("State cart has items but no store cart; cannot create cart widget")
+            return Widget(
+                type=WidgetType.CART,
+                data={},
+                raw_html_string="<p>Your cart is empty.</p>"
+            )
 
     # If empty
     if not internal_cart:

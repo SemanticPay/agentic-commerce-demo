@@ -101,7 +101,8 @@ def search_products(query: str) -> ProductList:
             logger.debug(f"Processing product {idx + 1}/{len(resp.products)}: {prod.title}")
             for variant_idx, variant in enumerate(prod.variants):
                 product = Product(
-                    id=variant.id,
+                    id=prod.id,
+                    variant_id=prod.variants[0].id if prod.variants else "",
                     title=f"{prod.title} - {variant.title}",
                     description=prod.description,
                     image=prod.images[0],
@@ -201,15 +202,15 @@ def get_product_details(product_id: str, tool_context: Optional[ToolContext] = N
             return None
         
         # Return the first variant as a Product
-        first_variant = resp.product.variants[0]
         product = Product(
-            id=first_variant.id,
-            title=f"{resp.product.title} - {first_variant.title}",
+            id=resp.product.id,
+            variant_id=resp.product.variants[0].id if resp.product.variants else "",
+            title=resp.product.title,
             description=resp.product.description,
             image=resp.product.images[0] if resp.product.images else "",
             price=Price(
-                amount=first_variant.price.amount,
-                currency_code=first_variant.price.currency_code,
+                amount=resp.product.price.amount,
+                currency_code=resp.product.price.currency_code,
             ),
         )
         

@@ -41,7 +41,8 @@ def add_item_to_cart(
         logger.error(f"Invalid quantity {quantity} for item ID {item_id}")
         return
 
-    state_cart: StateCart = tool_context.state.get(keys.CART_STATE_KEY, StateCart())
+    state_cart_data = tool_context.state.get(keys.CART_STATE_KEY, {})
+    state_cart: StateCart = StateCart(**state_cart_data) if state_cart_data else StateCart()
 
     cart_product: StateCartProduct = state_cart.id_to_product.get(item_id) # type: ignore
     if cart_product is None:
@@ -53,6 +54,7 @@ def add_item_to_cart(
 
         cart_product = StateCartProduct(
             id=item_id,
+            variant_id=resp.product.variants[0].id if resp.product.variants else "",
             quantity=0,
             title=resp.product.title,
             description=resp.product.description,
@@ -62,18 +64,20 @@ def add_item_to_cart(
 
     cart_product.quantity += quantity
     state_cart.id_to_product[item_id] = cart_product
-    tool_context.state[keys.CART_STATE_KEY] = state_cart
+    tool_context.state[keys.CART_STATE_KEY] = state_cart.model_dump()
     logger.info(f"Added item {item_id} to state cart (qty: {quantity})")
+    logger.info(f"Current state cart: {state_cart}")
 
 
 def remove_item_from_cart(
     item_id: str,
     tool_context: ToolContext,
 ) -> None:
-    state_cart: StateCart = tool_context.state.get(keys.CART_STATE_KEY, StateCart())
-    if item_id in state_cart.id_to_product:
+    state_cart_data = tool_context.state.get(keys.CART_STATE_KEY, {})
+    state_cart: StateCart = StateCart(**state_cart_data) if state_cart_data else StateCart()
+    if item_id in state_cart.id_to_product.keys():
         del state_cart.id_to_product[item_id]
-        tool_context.state[keys.CART_STATE_KEY] = state_cart
+        tool_context.state[keys.CART_STATE_KEY] = state_cart.model_dump()
         logger.info(f"Removed item {item_id} from state cart")
         return
 
@@ -85,12 +89,13 @@ def create_store_cart_and_get_checkout_url(
 ) -> None:
     logger.info("create_store_cart_and_get_checkout_url called")
 
-    state_cart: StateCart = tool_context.state.get(keys.CART_STATE_KEY, StateCart())
-    if len(state_cart.id_to_product) == 0:
+    state_cart_data = tool_context.state.get(keys.CART_STATE_KEY, {})
+    state_cart: StateCart = StateCart(**state_cart_data) if state_cart_data else StateCart()
+    if len(state_cart.id_to_product.keys()) == 0:
         logger.info("State cart is empty; no items to add to store cart")
         return
 
-    logger.info(f"Items requested: {len(state_cart.id_to_product)} product(s)")
+    logger.info(f"Items requested: {len(state_cart.id_to_product.keys())} product(s)")
     
     try:
         logger.info("Building state_cart line items")
@@ -98,9 +103,9 @@ def create_store_cart_and_get_checkout_url(
         for product in state_cart.id_to_product.values():
             lines.append(CartLineInput(
                 quantity=product.quantity,
-                merchandiseId=product.id,
+                merchandiseId=product.variant_id,
             ))
-            logger.debug(f"Added line item: {product.id} (qty: {product.quantity})")
+            logger.debug(f"Added line item: {product.id} with variant id {product.variant_id} (qty: {product.quantity})")
         logger.info(f"Created {len(lines)} cart line item(s)")
 
         if len(lines) == 0:
@@ -149,7 +154,7 @@ def create_store_cart_and_get_checkout_url(
         logger.info(f"Checkout URL: {cart.checkout_url}")
 
         logger.info(f"Setting cart in state")
-        tool_context.state[keys.STORE_CART] = cart
+        tool_context.state[keys.STORE_CART] = cart.model_dump()
     
     except Exception as e:
         logger.error(f"Error in create_shopify_cart_and_get_checkout_url: {str(e)}", exc_info=True)

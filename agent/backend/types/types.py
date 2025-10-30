@@ -10,6 +10,7 @@ class Price(BaseModel):
 
 class Product(BaseModel):
     id: str
+    variant_id: str
     title: str
     description: str
     price: Price
@@ -87,6 +88,7 @@ class SearchCategory(BaseModel):
 
 class StateCartProduct(BaseModel):
     id: str
+    variant_id: str
     quantity: int
     title: str
     description: str
