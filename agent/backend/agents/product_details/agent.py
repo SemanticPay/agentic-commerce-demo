@@ -22,7 +22,7 @@ logger.info("Environment variables loaded")
 
 logger.info("Creating product_details-agent")
 product_details_agent = Agent(
-            model="gemini-2.0-flash-lite",
+            model="gemini-2.0-flash",
             name="product_details_agent",
             description="A product_details information retrieval agent",
             instruction=PROMPT,

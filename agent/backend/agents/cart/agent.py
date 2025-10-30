@@ -23,7 +23,7 @@ logger.info("Environment variables loaded")
 
 logger.info("Creating cart-agent")
 cart_agent = Agent(
-            model="gemini-2.0-flash-lite",
+            model="gemini-2.0-flash",
             name="cart_agent",
             description="A shopping cart management agent",
             instruction=PROMPT,

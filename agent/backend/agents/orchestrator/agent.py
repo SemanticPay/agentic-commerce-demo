@@ -13,7 +13,6 @@ from google.genai import types
 from agent.backend.agents.product_details.agent import product_details_agent
 from agent.backend.agents.discovery.agent import discovery_agent
 from agent.backend.agents.cart.agent import cart_agent
-from agent.backend.agents.context.agent import context_agent
 from agent.backend.types.types import AgentCallRequest, AgentCallResponse, FunctionPayload
 from agent.backend.agents.orchestrator.prompt import PROMPT
 
@@ -33,14 +32,13 @@ logger.info("Environment variables loaded")
 
 logger.info("Creating orchestrator-agent")
 ORCHESTRATOR_AGENT = Agent(
-            model="gemini-2.0-flash-lite",
+            model="gemini-2.0-flash",
             name="orchestrator_agent",
             description="A shopping assistant agent",
             instruction=PROMPT,
             sub_agents=[
                 discovery_agent,
                 cart_agent,
-                context_agent,
                 product_details_agent,
             ],
         )

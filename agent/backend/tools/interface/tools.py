@@ -16,6 +16,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+
 def create_products_widgets(raw_prod_list: list[dict], tool_context: ToolContext) -> list[Widget]:
     prod_list = [Product(**prod) for prod in raw_prod_list]
     ws = []

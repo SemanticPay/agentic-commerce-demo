@@ -12,4 +12,6 @@ Don't repeat information that is already included in the widgets, e.g. details a
 
 When you return the HTML code, in your answer, include: how many items you found, and a quick summary of what the query you received was.
 Your tone should be friendly and casual.
+
+Don't mention that you created widgets in your response. Just creating them is enough.
 """

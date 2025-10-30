@@ -18,25 +18,26 @@ export default function ChatPage() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages, loading])
 
-  async function handleSend(customMessage?: string) {
-    const text = customMessage ?? inputValue.trim()
-    if (!text) return
-    const userMsg = { id: crypto.randomUUID(), role: "user" as const, text }
-    addMessage(userMsg)
-    setInputValue("")
-    setLoading(true)
-    try {
-      const res = await queryAgent(text)
-      const agentMsg = { id: crypto.randomUUID(), role: "agent" as const, text: res.response }
-      addMessage(agentMsg)
-      setWidgets(res.widgets || [])
-    } catch {
-      addMessage({ id: crypto.randomUUID(), role: "agent", text: "Error: could not get response." })
-    } finally {
-      setLoading(false)
+async function handleSend(customMessage?: string) {
+  const text = customMessage ?? inputValue.trim()
+  if (!text) return
+  const userMsg = { id: crypto.randomUUID(), role: "user" as const, text }
+  addMessage(userMsg)
+  setInputValue("")
+  setLoading(true)
+  try {
+    const res = await queryAgent(text)
+    const agentMsg = { id: crypto.randomUUID(), role: "agent" as const, text: res.response }
+    addMessage(agentMsg)
+    if (res.widgets && res.widgets.length > 0) {
+      setWidgets(res.widgets)
     }
+  } catch {
+    addMessage({ id: crypto.randomUUID(), role: "agent", text: "Error: could not get response." })
+  } finally {
+    setLoading(false)
   }
-
+}
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") handleSend()
   }
@@ -123,7 +124,7 @@ export default function ChatPage() {
               <div className="relative bg-white rounded-2xl shadow-[0_4px_16px_rgba(0,0,0,0.05)] transition-all duration-300 focus-within:shadow-[0_0_0_2px_rgba(183,177,242,0.4),0_0_0_4px_rgba(253,183,234,0.4)]">
                 <Input
                   type="text"
-                  placeholder="Type..."
+                  placeholder="Tell me your vibe..."
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
                   onKeyPress={handleKeyPress}

@@ -21,7 +21,7 @@ logger.info("Environment variables loaded")
 
 logger.info("Creating discovery-agent")
 discovery_agent = Agent(
-            model="gemini-2.0-flash-lite",
+            model="gemini-2.0-flash",
             name="discovery_agent",
             description="A discovery information retrieval agent",
             instruction=PROMPT,
