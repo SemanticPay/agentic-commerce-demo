@@ -34,6 +34,8 @@ A working **agentic commerce** proof-of-concept — a network of AI agents actin
 
 This architecture isolates reasoning, orchestration, and I/O cleanly — allowing you to swap Shopify for any other e-commerce backend without touching agent logic.
 
+![Current Flow](docs/curr-flow.png)
+
 ---
 
 ## 🖥 Backend
@@ -61,41 +63,33 @@ This architecture isolates reasoning, orchestration, and I/O cleanly — allowin
 ---
 
 ### Orchestrator and Agents
-**`agents/orchestrator/agent.py`**
-- Root `Agent` powered by `gemini-2.0-flash`.
-- Sub-agents: `discovery_agent`, `cart_agent`, `product_details_agent`.
-- Uses `google.adk` services:
-  - `Runner`
-  - `InMemorySessionService`
-  - `InMemoryArtifactService`
-- Handles per-session chat context + widget extraction.
+#### 🧠 Root Agent
+Root agent powered by **Gemini 2.0 Flash**, coordinating all sub-agents using `google.adk` primitives:  
+`Runner`, `InMemorySessionService`, and `InMemoryArtifactService`.  
+It maintains per-session chat state and converts tool payloads into UI widgets.
 
-**Agent Roles**
-- 🧭 **Discovery Agent** → searches Shopify, creates product widgets.  
-- 🛒 **Cart Agent** → builds cart in memory + Shopify checkout.  
-- 📦 **Product Details Agent** → fetches and summarizes individual products.
+#### 🧭 Discovery Agent
+- **Purpose:** Search for products and build product display widgets.  
+- **Tools Used:**
+  - `search_products(query)` — fetches product data from Shopify.  
+  - `create_products_widgets(raw_prod_list)` — turns structured product data into renderable widgets.
 
----
+#### 🛒 Cart Agent
+- **Purpose:** Manage the user’s in-memory and Shopify carts.  
+- **Tools Used:**
+  - `add_item_to_cart(product_id, quantity)` — updates local cart state.  
+  - `remove_item_from_cart(product_id)` — removes items.  
+  - `create_shopify_cart_and_get_checkout_url()` — creates live Shopify cart and checkout link.  
+  - `create_cart_widget()` — generates a visual cart summary widget.
 
-### Tools (MCP Functions)
+#### 📦 Product Details Agent
+- **Purpose:** Retrieve and summarize details for a specific product.  
+- **Tools Used:**
+  - `get_product_details(product_id)` — fetches variant details via Shopify GraphQL.  
+  - `create_products_widgets()` — builds detailed product display widget.
 
-#### Product Tools
-`tools/product/tools.py`
-- `search_products(query)` → hits Shopify Storefront GraphQL.
-- `get_product_details(product_id)` → returns one `Product`.
 
-#### Interface Tools
-`tools/interface/tools.py`
-- `create_products_widgets(raw_prod_list)` → list of `ProductWidget`s with HTML.
-- `create_products_section_widget(tool_context)` → section widget.
-- `create_cart_widget(tool_context)` → checkout widget.
-
-This layer lets merchants **customize the storefront UI** by delivering **dynamically generated UI elements** from the server side. It converts structured agent data (like products or carts) into ready-to-render widgets for the frontend.
-
-#### Cart Tools
-`tools/cart/tools.py`
-- `add_item_to_cart`, `remove_item_from_cart` → update `X-cart`.
-- `create_shopify_cart_and_get_checkout_url()` → writes `X-shopify-cart`.
+> `create_cart_widget` and `create_products_widgets` let **merchants customize UI elements** server-side, enabling **multi-merchant storefronts** with dynamic, brand-specific layouts delivered directly from the merchant backend.
 
 ---
 ## ⚙️ Setup & Run
@@ -149,5 +143,5 @@ npm run dev
 - **Promos MCP Server** — Introduce a new MCP server for **merchant-driven business rules**.  
   - Lets merchants dynamically inject promotion logic, preferences, or ranking strategies into the agent flow.  
   - Controls which items are emphasized or hidden based on business objectives (e.g., margin, stock, campaign priority).
-  
-![Context Agent Flow](docs/context-agent.jpeg)
+
+![Final Flow](docs/final-flow.jpeg)
