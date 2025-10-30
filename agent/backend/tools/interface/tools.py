@@ -45,26 +45,36 @@ def create_products_widgets(raw_prod_list: list[dict], tool_context: ToolContext
     prod_list = [Product(**prod) for prod in raw_prod_list]
     ws = []
 
+    product_cards_html = ""
     for prod in prod_list:
-        logger.debug(f"Creating product widget for: {prod.title}")
-
-        html_string = f"""
-        <div className="product-image-container">
+        card_html = f"""
+        <div class="w-full bg-white rounded-2xl overflow-hidden border border-gray-100 transition-all duration-300 flex flex-col h-full">
             <img 
-                src={prod.image} 
-                alt={prod.title}
-                className="product-image"
+                src="{prod.image}" 
+                alt="{prod.title}" 
+                class="w-full h-48 object-cover flex-shrink-0"
             />
-        </div>
-        <div className="product-details">
-            <h3 className="product-title">{prod.title}</h3>
-            <p className="product-description">{prod.description}</p>
-            <p className="product-price">
-                {formatPrice(prod.price.amount, prod.price.currency_code)}
-            </p>
+            <div class="p-6 flex flex-col flex-grow">
+                <div class="flex-grow mb-4">
+                    <h3 class="text-black mb-2">{prod.title}</h3>
+                    <p class="text-gray-600 text-[14px] leading-relaxed">
+                        {prod.description}
+                    </p>
+                </div>
+                <div class="flex gap-3">
+                    <button 
+                        class="add-to-cart-btn flex-1 bg-white text-black border border-gray-200 hover:bg-gray-50 hover:shadow-md hover:scale-[1.02] cursor-pointer transition-all duration-200 rounded-xl h-11 flex items-center justify-center"
+                        data-title="{prod.title}"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13l-1.3 5H18a1 1 0 001-1v-1M7 13L5.4 5M16 21a1 1 0 100-2 1 1 0 000 2zm-8 0a1 1 0 100-2 1 1 0 000 2z"/>
+                        </svg>
+                        Add to Cart
+                    </button>
+                </div>
+            </div>
         </div>
         """
-
         ws.append(ProductWidget(
             type=WidgetType.PRODUCT,
             data={
@@ -75,11 +85,21 @@ def create_products_widgets(raw_prod_list: list[dict], tool_context: ToolContext
                 "currency": prod.price.currency_code,
                 "image": prod.image,
             },
-            raw_html_string=html_string
+            raw_html_string=card_html
         ))
-        logger.debug(f"Product widget created: {prod.title} - {prod.price.amount} {prod.price.currency_code}")
+        product_cards_html += f"<div class='w-[30%]'>{card_html}</div>\n"
 
-    return ws
+    container_html = f"""
+    <div class="bg-white flex flex-wrap justify-start gap-6 w-full p-8 rounded-3xl">
+        {product_cards_html}
+    </div>
+    """
+
+    return [Widget(
+        type=WidgetType.PRODUCT_SECTIONS,
+        data={"products": [p.model_dump() for p in prod_list]},
+        raw_html_string=container_html
+    )]
 
 def create_cart_widget(tool_context: ToolContext) -> Widget:
     cart = tool_context.state[keys.SHOPIFY_CART]

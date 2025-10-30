@@ -153,7 +153,6 @@ class GetProductsResponse(BaseModel):
 
 
 class GetProductRequest(BaseModel):
-    handle: str | None = None
     id: str | None = None
 
 

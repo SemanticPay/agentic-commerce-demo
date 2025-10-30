@@ -3,9 +3,8 @@ import sys
 from dotenv import load_dotenv
 from google.adk.agents import Agent
 
-from agent.backend.tools.product.tools import search_products
-from agent.backend.tools.interface.tools import create_products_widgets
-from agent.backend.agents.discovery.prompt import PROMPT
+from agent.backend.agents.product_details.prompt import PROMPT
+from agent.backend.tools.product.tools import get_product_details
 
 
 # Configure logging to stdout
@@ -21,15 +20,14 @@ logger.info("Loading environment variables for agent")
 load_dotenv()
 logger.info("Environment variables loaded")
 
-logger.info("Creating discovery-agent")
-discovery_agent = Agent(
+logger.info("Creating product_details-agent")
+product_details_agent = Agent(
             model="gemini-2.5-flash",
-            name="discovery_agent",
-            description="A discovery information retrieval agent",
+            name="product_details_agent",
+            description="A product_details information retrieval agent",
             instruction=PROMPT,
             tools=[
-                search_products,
-                create_products_widgets,
+                get_product_details,
             ]
         )
-logger.info("discovery-agent created successfully")
+logger.info("product_details-agent created successfully")

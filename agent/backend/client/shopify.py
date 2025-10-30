@@ -8,6 +8,8 @@ from typing import Dict, Any, Optional
 
 from agent.backend.client.base_types import Address, AddressOption, Cart, CartAddressInput, CartCreateRequest, CartCreateResponse, CartGetRequest, CartGetResponse, CartLineInput, GetProductRequest, GetProductResponse, GetProductsRequest, GetProductsResponse, Product, SearchProductsRequest, SearchProductsResponse
 from agent.backend.client.interface import ProductsClient, StoreFrontClient
+from google.adk.agents import Agent
+import asyncio
 
 # Configure logging to stdout
 logging.basicConfig(
@@ -17,7 +19,30 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+import asyncio
+from google.adk.agents import Agent
+from google.adk.artifacts.in_memory_artifact_service import InMemoryArtifactService
+from google.adk.runners import Runner
+from google.adk.sessions import InMemorySessionService
+from google.genai import types
+import re
 
+def expand_query_for_shopify(raw_query: str) -> str:
+    if not raw_query:
+        return raw_query
+    tokens = re.findall(r"\w+", raw_query.lower())
+    expanded = []
+    for t in tokens:
+        # plural and singular variants
+        if t.endswith("s"):
+            singular = t[:-1]
+            expanded.append(f"{t} OR {singular}")
+        else:
+            plural = f"{t}s"
+            expanded.append(f"{t} OR {plural}")
+    # join with OR (never AND — always expand universe)
+    inclusive_query = " OR ".join(expanded)
+    return inclusive_query
 
 class ShopifyGraphQLClient(StoreFrontClient):
     def __init__(self, store_url: str, access_token: Optional[str] = None):
@@ -25,7 +50,7 @@ class ShopifyGraphQLClient(StoreFrontClient):
         logger.info(f"Store URL: {store_url}")
         logger.info(f"Access token provided: {bool(access_token)}")
         
-        self.store_url = store_url
+        self.store_url = "https://huescorner.myshopify.com/api/2025-10/graphql.json"
         self.access_token = access_token
         self.headers = {
             "Content-Type": "application/json",
@@ -126,10 +151,11 @@ class ShopifyGraphQLClient(StoreFrontClient):
             }
         }
         """
-
+        req.query = expand_query_for_shopify(req.query)
+  
         variables = {
             "query": req.query,
-            "first": min(req.first, 250),  # Shopify limit
+            "first": min(req.first, 250),
             "sortKey": req.sort_key,
             "reverse": req.reverse
         }
@@ -572,7 +598,7 @@ def test_storefront_client():
 
 class ShopifyAdminClient(ProductsClient):
     def __init__(self, store_url: str, access_token: str):
-        self.store_url = store_url
+        self.store_url = "https://huescorner.myshopify.com/api/2025-10/graphql.json"
         self.access_token = access_token
         self.headers = {
             "Content-Type": "application/json",
