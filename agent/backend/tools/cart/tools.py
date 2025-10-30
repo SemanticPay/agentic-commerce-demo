@@ -5,21 +5,11 @@ import sys
 
 from google.adk.tools import ToolContext
 
+from agent.backend.state import keys
 from agent.backend.client.base_types import Address, AddressOption, CartAddressInput, CartCreateRequest, CartGetRequest, CartLineInput, StoreProvider
 from agent.backend.client.factory import get_storefront_client
 from agent.backend.client.interface import StoreFrontClient
 from agent.backend.types.types import Cart, Price
-
-
-"""
-CART_STATE_KEY is the key used to store cart information in the ToolContext state in the following format:
-{
-    "item_id_1": quantity_1,
-    "item_id_2": quantity_2,
-    ...
-}
-"""
-CART_STATE_KEY = "X-cart"
 
 
 # Configure logging to stdout
@@ -49,9 +39,9 @@ def add_item_to_cart(
     if quantity <= 0:
         raise ValueError("Quantity must be greater than zero")
 
-    cart = tool_context.state.get(CART_STATE_KEY, {})
+    cart = tool_context.state.get(keys.CART_STATE_KEY, {})
     cart[item_id] = cart.get(item_id, 0) + quantity
-    tool_context.state[CART_STATE_KEY] = cart
+    tool_context.state[keys.CART_STATE_KEY] = cart
     logger.info(f"Added item {item_id} (qty: {quantity})")
 
 
@@ -59,8 +49,8 @@ def remove_item_from_cart(
     item_id: str,
     tool_context: ToolContext,
 ) -> None:
-    if item_id in tool_context.state.get(CART_STATE_KEY, {}):
-        del tool_context.state[CART_STATE_KEY][item_id]
+    if item_id in tool_context.state.get(keys.CART_STATE_KEY, {}):
+        del tool_context.state[keys.CART_STATE_KEY][item_id]
         logger.info(f"Removed item {item_id}.")
         return
 
@@ -69,10 +59,10 @@ def remove_item_from_cart(
 
 def create_shopify_cart_and_get_checkout_url(
     tool_context: ToolContext,
-) -> Cart:
+) -> None:
     logger.info("create_shopify_cart_and_get_checkout_url called")
 
-    state_cart: dict[str, int] = tool_context.state.get(CART_STATE_KEY, {})
+    state_cart: dict[str, int] = tool_context.state.get(keys.CART_STATE_KEY, {})
     if not state_cart:
         raise Exception("No items in state_cart to create")
 
@@ -127,7 +117,8 @@ def create_shopify_cart_and_get_checkout_url(
         logger.info(f"Total: {cart.total_amount.amount} {cart.total_amount.currency_code}")
         logger.info(f"Checkout URL: {cart.checkout_url}")
 
-        return cart
+        logger.info(f"Setting cart in state")
+        tool_context.state[keys.SHOPIFY_CART] = cart
     
     except Exception as e:
         logger.error(f"Error in create_shopify_cart_and_get_checkout_url: {str(e)}", exc_info=True)

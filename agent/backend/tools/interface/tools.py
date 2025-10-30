@@ -4,6 +4,7 @@ from typing import Any
 
 from google.adk.tools import ToolContext
 
+from agent.backend.state import keys
 from agent.backend.types.types import Cart, CartWidget, Product, ProductWidget, ProductSection, Widget, WidgetType
 
 
@@ -16,25 +17,10 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def create_products_section_widget(raw_sections: list[dict[str, str]], tool_context: ToolContext) -> Widget:
-    sections: list[ProductSection] = []
-    for sec in raw_sections:
-        raw_products: list[dict[str, Any]] = sec.get("products", []) # type: ignore
-        products = []
-        for rp in raw_products:
-            try:
-                products.append(Product(**rp))
-            except Exception as e:
-                logger.error(f"Error parsing product data: {e}")
-        sections.append(ProductSection(
-            title=sec.get("title", ""),
-            subtitle=sec.get("subtitle", ""),
-            description=sec.get("description", ""),
-            products=products,
-        ))
+def create_products_section_widget(tool_context: ToolContext) -> Widget:
+    sections = tool_context.state.get(keys.PRODUCT_SECTIONS_STATE_KEY, [])
 
     sections_widget_html = ""
-
     for sec in sections:
         sections_widget_html += f"<h2>{sec.title or "EMPTY"}</h2>\n"
         sections_widget_html += f"<h3>{sec.subtitle or "EMPTY"}</h3>\n"
@@ -95,8 +81,9 @@ def create_products_widgets(raw_prod_list: list[dict], tool_context: ToolContext
 
     return ws
 
-def create_cart_widget(raw_cart: dict, tool_context: ToolContext) -> Widget:
-    cart = Cart(**raw_cart)
+def create_cart_widget(tool_context: ToolContext) -> Widget:
+    cart = tool_context.state[keys.SHOPIFY_CART]
+    logger.info(f"Creating cart widget from state cart: {cart}")
 
     logger.debug("Creating cart widget")
     subtotal = cart.subtotal_amount

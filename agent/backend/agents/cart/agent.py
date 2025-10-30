@@ -31,8 +31,8 @@ cart_agent = Agent(
                 add_item_to_cart,
                 remove_item_from_cart,
                 create_shopify_cart_and_get_checkout_url,
-                # cart_get,
                 create_cart_widget,
+                # cart_get,
             ]
         )
 logger.info("cart-agent created successfully")

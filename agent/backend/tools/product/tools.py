@@ -8,6 +8,8 @@ from google.adk.tools import ToolContext
 from agent.backend.client.base_types import GetProductRequest, SearchProductsRequest, StoreProvider
 from agent.backend.client.factory import get_storefront_client
 from agent.backend.client.interface import StoreFrontClient
+from agent.backend.state import keys
+from agent.backend.tools.context.tools import get_search_categories
 from agent.backend.tools.interface.tools import create_products_widgets
 from agent.backend.types.types import Price, Product, ProductList, ProductSection
 
@@ -30,39 +32,25 @@ storefront_client: StoreFrontClient = get_storefront_client(
 logger.info("Storefront client initialized successfully")
 
 
-def search_product_categories(categories: list[dict[str, str]], tool_context: ToolContext) -> list[ProductSection]:
-    """
-    categories: [
-        {
-            "title": "hats",
-            "subtitle": "Stylish Hats",
-            "description": "A variety of stylish hats.",
-            "query": "red hat",
-        },
-        {
-            "title": "shoes",
-            "subtitle": "Stylish Shoes",
-            "description": "A variety of stylish shoes.",
-            "query": "black shoe",
-        },
-    ]
-    """
+def search_product_categories(tool_context: ToolContext) -> None:
+    categories = get_search_categories(tool_context)
 
     sections: list[ProductSection] = []
     for cat in categories:
-        query = cat["query"]
-        prod_list = search_products(query, tool_context)
+        query = cat.query
+        prod_list = search_products(query)
         sections.append(ProductSection(
-            title=cat.get("title", ""),
-            description=cat.get("description", ""),
-            subtitle=cat.get("subtitle", ""),
+            title=cat.title,
+            description=cat.description,
+            subtitle=cat.subtitle,
             products=prod_list.products,
         ))
 
-    return sections
+    logger.info(f"Setting product categories sections in state: {sections}")
+    tool_context.state[keys.PRODUCT_SECTIONS_STATE_KEY] = sections
 
 
-def search_products(query: str, tool_context: ToolContext) -> ProductList:
+def search_products(query: str) -> ProductList:
     """Search for products in the store catalog.
     
     This MCP tool allows AI agents to search the e-commerce store's product
