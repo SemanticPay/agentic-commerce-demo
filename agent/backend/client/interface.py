@@ -254,7 +254,19 @@ class StoreFrontClient(ABC):
             - Returns None if the product is not found or not published.
         """
         pass
+    
+    @abstractmethod
+    def fetch_all_products(self) -> GetProductsResponse:
+        """Retrieve the full published product catalog.
 
+        This provides a unified method for complete catalog ingestion,
+        used for batch operations such as RAG corpus preparation.
+
+        Returns:
+            GetProductsResponse: Response containing:
+                - products (list[Product]): All available published products.
+        """
+        pass
 
 class ProductsClient(ABC):
     @abstractmethod

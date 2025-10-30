@@ -101,7 +101,126 @@ class ShopifyGraphQLClient(StoreFrontClient):
         except Exception as e:
             logger.error(f"Error executing GraphQL query: {str(e)}", exc_info=True)
             raise
-    
+
+    def fetch_all_products(self) -> GetProductsResponse:
+        """
+        Retrieve all published products from Shopify Storefront API with images and detailed logging.
+        """
+        logger.info("=" * 60)
+        logger.info("Starting full product catalog fetch from Shopify Storefront API")
+        logger.info("=" * 60)
+
+        products = []
+        cursor = None
+        page = 1
+
+        query = """
+        query($cursor:String){
+        products(first:250, after:$cursor){
+            edges{
+            cursor
+            node{
+                id
+                handle
+                title
+                description
+                vendor
+                productType
+                tags
+                onlineStoreUrl
+                images(first:5){
+                edges{
+                    node{ url }
+                }
+                }
+                variants(first:20){
+                edges{
+                    node{
+                    id
+                    title
+                    price{amount currencyCode}
+                    }
+                }
+                }
+            }
+            }
+            pageInfo{hasNextPage endCursor}
+        }
+        }
+        """
+
+        try:
+            while True:
+                logger.info(f"Fetching page {page} (cursor: {cursor})")
+                resp = self._execute_query(query, {"cursor": cursor})
+
+                if "errors" in resp:
+                    logger.error(f"GraphQL error(s): {resp['errors']}")
+                    raise RuntimeError(f"GraphQL errors: {resp['errors']}")
+
+                if "products" not in resp:
+                    logger.error(f"Missing 'products' key in response: {json.dumps(resp)[:500]}")
+                    raise RuntimeError("Invalid Shopify response: no products key")
+
+                products_data = resp["products"]
+                edges = products_data.get("edges", [])
+                logger.info(f"Page {page}: {len(edges)} product(s) retrieved")
+
+                for i, edge in enumerate(edges):
+                    node = edge.get("node")
+                    if not node:
+                        logger.warning(f"Edge {i} missing node")
+                        continue
+
+                    # Images
+                    image_edges = node.get("images", {}).get("edges", [])
+                    images = [img["node"]["url"] for img in image_edges if "node" in img and "url" in img["node"]]
+                    node["images"] = images or ["https://via.placeholder.com/300"]
+
+                    # Variants
+                    variant_edges = node.get("variants", {}).get("edges", [])
+                    variants = []
+                    for idx, v in enumerate(variant_edges):
+                        vn = v.get("node", {})
+                        vn.setdefault("id", f"{node['id']}_variant_{idx}")
+                        vn.setdefault("title", "Default Variant")
+                        vn.setdefault("price", {"amount": "0", "currencyCode": "USD"})
+                        variants.append(vn)
+                    node["variants"] = variants
+                    node["price"] = variants[0]["price"] if variants else {"amount": "0", "currencyCode": "USD"}
+
+                    # Fill defaults
+                    node.setdefault("vendor", "Unknown")
+                    node.setdefault("productType", "")
+                    node.setdefault("tags", [])
+                    node.setdefault("description", "")
+                    node.setdefault("onlineStoreUrl", "")
+
+                    try:
+                        product = Product(**node)
+                        products.append(product)
+                        logger.debug(f"Processed product {i + 1}: {product.title}")
+                    except Exception as ex:
+                        logger.error(f"Validation error building Product: {ex}", exc_info=True)
+
+                page_info = products_data.get("pageInfo", {})
+                has_next = page_info.get("hasNextPage")
+                cursor = page_info.get("endCursor")
+
+                logger.info(f"Page {page} processed. hasNextPage={has_next}, endCursor={cursor}")
+                if not has_next:
+                    break
+
+                page += 1
+
+            logger.info(f"Fetch complete. Total products: {len(products)}")
+            logger.info("=" * 60)
+            return GetProductsResponse(products=products)
+
+        except Exception as e:
+            logger.error(f"Failed to fetch all products: {e}", exc_info=True)
+            raise
+        
     def search_products(
         self,
         req: SearchProductsRequest
@@ -744,7 +863,7 @@ class ShopifyAdminClient(ProductsClient):
             logger.error(f"Failed to get products: {str(e)}", exc_info=True)
             raise Exception(f"Failed to get products: {str(e)}")
         
-
+    
 def test_admin_client():
     load_dotenv()
     admin_client = ShopifyAdminClient(
