@@ -8,7 +8,6 @@
 
 A working **agentic commerce** proof-of-concept — a network of AI agents acting as autonomous shopping concierges. The backend orchestrates Shopify API calls through structured MCP tools. The frontend renders those results as live, interactive product widgets.
 
----
 ## 🏗 Architecture
 
 | Layer | Stack | Purpose |
@@ -36,8 +35,6 @@ This architecture isolates reasoning, orchestration, and I/O cleanly — allowin
 
 ![Current Flow](docs/curr-flow.png)
 
----
-
 ## 🖥 Backend
 
 ### Entry Point
@@ -54,13 +51,9 @@ This architecture isolates reasoning, orchestration, and I/O cleanly — allowin
   ```
 - Invokes the orchestrator agent → converts tool payloads → `widgets[]`.
 
----
-
 ### Core Types
 - **`types/types.py`** — shared data models for `Product`, `Cart`, `Widget`.
 - **`state/keys.py`** — registry for agent memory keys (`X-cart`, `X-shopify-cart`, `X-search-categories`, etc.).
-
----
 
 ### Orchestrator and Agents
 #### 🧠 Root Agent
@@ -91,7 +84,6 @@ It maintains per-session chat state and converts tool payloads into UI widgets.
 
 > `create_cart_widget` and `create_products_widgets` let **merchants customize UI elements** server-side, enabling **multi-merchant storefronts** with dynamic, brand-specific layouts delivered directly from the merchant backend.
 
----
 ## ⚙️ Setup & Run
 
 **Requirements**
@@ -121,7 +113,6 @@ npm install
 npm run dev
 ```
 
----
 ### 🚀 Next Steps
 
 - **RAG Search Layer** — Replace direct Shopify queries with a retrieval-augmented layer that indexes product embeddings for faster, context-aware search.  
