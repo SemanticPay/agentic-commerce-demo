@@ -205,11 +205,7 @@ def get_product_details(product_id: str, tool_context: Optional[ToolContext] = N
     
     try:
         logger.info("Sending get product request to storefront client")
-        resp = storefront_client.get_product(
-            GetProductRequest(
-                id=product_id,
-            )
-        )
+        resp = storefront_client.get_product(GetProductRequest(id=product_id))
         
         if resp.product is None:
             logger.info(f"Product not found: {product_id}")
