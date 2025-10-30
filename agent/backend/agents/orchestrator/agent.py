@@ -10,6 +10,7 @@ from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
 from google.genai import types
 
+from agent.backend.agents.product_details.agent import product_details_agent
 from agent.backend.agents.discovery.agent import discovery_agent
 from agent.backend.agents.cart.agent import cart_agent
 from agent.backend.agents.context.agent import context_agent
@@ -40,6 +41,7 @@ ORCHESTRATOR_AGENT = Agent(
                 discovery_agent,
                 cart_agent,
                 context_agent,
+                product_details_agent,
             ],
         )
 logger.info("orchestrator-agent created successfully")

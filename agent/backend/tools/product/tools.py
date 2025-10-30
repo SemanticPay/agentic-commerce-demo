@@ -141,7 +141,7 @@ def search_products(query: str) -> ProductList:
         raise
 
 
-def get_product_details(product_id: str = "", handle: str = "", tool_context: Optional[ToolContext] = None) -> Product | None:
+def get_product_details(product_id: str, tool_context: Optional[ToolContext] = None) -> Optional[Product]:
     """Get detailed information for a specific product by ID or handle.
     
     This MCP tool allows AI agents to retrieve complete details about a single
@@ -202,47 +202,18 @@ def get_product_details(product_id: str = "", handle: str = "", tool_context: Op
         - Pricing may vary by region/market
         - Returns None if product doesn't exist or isn't published
     """
-    logger.info(f"get_product_details called with product_id: '{product_id}', handle: '{handle}'")
-    
-    if not product_id and not handle:
-        logger.error("Neither product_id nor handle provided")
-        raise ValueError("Either product_id or handle must be provided")
+    logger.info(f"get_product_details called with product_id: '{product_id}'")
     
     try:
-        # Note: product_id from search results is actually a variant ID
-        # We need to extract the product ID from it or convert to handle
-        # For Shopify, variant IDs look like: gid://shopify/ProductVariant/123
-        # Product IDs look like: gid://shopify/Product/123
-        
-        # If we have a variant ID, we'll convert it to product ID
-        actual_product_id = None
-        if product_id:
-            # Extract product ID from variant ID if needed
-            if "ProductVariant" in product_id:
-                logger.info(f"Converting variant ID to product ID: {product_id}")
-                # We'll use the handle approach instead since variant ID won't work
-                # for the product query
-                logger.warning("Variant ID provided, but product query needs product ID or handle. Using handle search instead.")
-                # Try to search by variant ID first to get the handle
-                # For now, raise an error to guide proper usage
-                raise ValueError(
-                    "Product variant ID provided, but get_product requires a product ID or handle. "
-                    "Please use the handle parameter instead, or search for the product first."
-                )
-            else:
-                actual_product_id = product_id
-        
         logger.info("Sending get product request to storefront client")
         resp = storefront_client.get_product(
             GetProductRequest(
-                id=actual_product_id,
-                handle=handle if not actual_product_id else None
+                id=product_id,
             )
         )
         
         if resp.product is None:
-            identifier = actual_product_id or handle
-            logger.info(f"Product not found: {identifier}")
+            logger.info(f"Product not found: {product_id}")
             return None
         
         logger.info(f"Received product: {resp.product.title}")
