@@ -2,9 +2,7 @@
 
 > LLM-powered shopping orchestration. Real-time discovery, cart creation, and checkout via Shopify.
 
-<video src="./docs/demo.mp4" controls width="100%" style="border-radius:12px; margin-top:12px;"></video>
-
----
+https://github.com/user-attachments/assets/c48cd6fd-b840-4e6c-bcf2-fdf38d4ac6df
 
 ## 🧠 Overview
 
