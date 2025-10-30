@@ -393,93 +393,48 @@ class ShopifyGraphQLClient(StoreFrontClient):
         Returns:
             GetProductResponse: Response containing the product or None if not found
         """
-        if not req.handle and not req.id:
-            logger.error("Neither handle nor id provided in GetProductRequest")
-            raise ValueError("Either handle or id must be provided")
         
         # Build the query based on what's provided (id takes precedence)
-        if req.id:
-            graphql_query = """
-            query getProduct($id: ID!) {
-                product(id: $id) {
-                    id
-                    title
-                    description
-                    images(first: 5) {
-                        edges {
-                            node {
-                                url
-                            }
-                        }
-                    }
-                    variants(first: 10) {
-                        edges {
-                            node {
-                                id
-                                title
-                                price {
-                                    amount
-                                    currencyCode
-                                }
-                            }
-                        }
-                    }
-                    priceRange {
-                        minVariantPrice {
-                            amount
-                            currencyCode
-                        }
-                        maxVariantPrice {
-                            amount
-                            currencyCode
+        graphql_query = """
+        query getProduct($id: ID!) {
+            product(id: $id) {
+                id
+                title
+                description
+                images(first: 5) {
+                    edges {
+                        node {
+                            url
                         }
                     }
                 }
-            }
-            """
-            variables = {"id": req.id}
-            logger.info(f"Fetching product by ID: {req.id}")
-        else:
-            graphql_query = """
-            query getProduct($handle: String!) {
-                product(handle: $handle) {
-                    id
-                    title
-                    description
-                    images(first: 5) {
-                        edges {
-                            node {
-                                url
+                variants(first: 10) {
+                    edges {
+                        node {
+                            id
+                            title
+                            price {
+                                amount
+                                currencyCode
                             }
-                        }
-                    }
-                    variants(first: 10) {
-                        edges {
-                            node {
-                                id
-                                title
-                                price {
-                                    amount
-                                    currencyCode
-                                }
-                            }
-                        }
-                    }
-                    priceRange {
-                        minVariantPrice {
-                            amount
-                            currencyCode
-                        }
-                        maxVariantPrice {
-                            amount
-                            currencyCode
                         }
                     }
                 }
+                priceRange {
+                    minVariantPrice {
+                        amount
+                        currencyCode
+                    }
+                    maxVariantPrice {
+                        amount
+                        currencyCode
+                    }
+                }
             }
-            """
-            variables = {"handle": req.handle}
-            logger.info(f"Fetching product by handle: {req.handle}")
+        }
+        """
+        variables = {"id": req.id}
+        logger.info(f"Fetching product by ID: {req.id}")
         
         try:
             logger.info("Executing product retrieval GraphQL query")
@@ -489,8 +444,7 @@ class ShopifyGraphQLClient(StoreFrontClient):
             product_data = data.get("product")
             
             if product_data is None:
-                identifier = req.id if req.id else req.handle
-                logger.info(f"Product not found: {identifier}")
+                logger.info(f"Product not found: {req.id}")
                 return GetProductResponse(product=None)
             
             logger.info(f"Product found: {product_data.get('title')}")
