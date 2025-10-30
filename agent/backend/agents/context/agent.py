@@ -22,7 +22,7 @@ logger.info("Environment variables loaded")
 
 logger.info("Creating context-agent")
 context_agent = Agent(
-            model="gemini-2.5-flash",
+            model="gemini-2.0-flash-lite",
             name="context_agent",
             description="A shopping context agent",
             instruction=PROMPT,

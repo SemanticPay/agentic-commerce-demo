@@ -33,14 +33,12 @@ def expand_query_for_shopify(raw_query: str) -> str:
     tokens = re.findall(r"\w+", raw_query.lower())
     expanded = []
     for t in tokens:
-        # plural and singular variants
         if t.endswith("s"):
             singular = t[:-1]
             expanded.append(f"{t} OR {singular}")
         else:
             plural = f"{t}s"
             expanded.append(f"{t} OR {plural}")
-    # join with OR (never AND — always expand universe)
     inclusive_query = " OR ".join(expanded)
     return inclusive_query
 

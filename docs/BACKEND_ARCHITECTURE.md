@@ -15,7 +15,7 @@ This backend is a FastAPI service that orchestrates a set of AI agents (Google A
   - Calls `agents.orchestrator.agent.call_agent(...)` and converts agent function payloads into `widgets` via `extract_widgets_from_function_payloads`.
 
 - `agent/backend/agents/orchestrator/agent.py`
-  - Builds the orchestrator `Agent` (model: `gemini-2.5-flash`) with instruction from `prompt.py`.
+  - Builds the orchestrator `Agent` (model: `gemini-2.0-flash-lite`) with instruction from `prompt.py`.
   - Registers sub-agents: context, discovery, cart, product_details.
   - Uses `Runner`, `InMemorySessionService`, `InMemoryArtifactService` to manage sessions and streaming events.
   - `call_agent` streams events, concatenates text responses, and collects function responses into `FunctionPayload[]` (no silent fallbacks; errors are raised).

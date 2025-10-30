@@ -22,7 +22,7 @@ This document summarizes the architecture, flows, and key modules of the project
 
 #### Orchestrator and Sub-Agents
 - `agents/orchestrator/agent.py`
-  - Orchestrator `Agent` with model `gemini-2.5-flash`, instruction in `agents/orchestrator/prompt.py`.
+  - Orchestrator `Agent` with model `gemini-2.0-flash-lite`, instruction in `agents/orchestrator/prompt.py`.
   - Sub-agents: `context_agent`, `discovery_agent`, `cart_agent`, `product_details_agent`.
   - Uses `google.adk` services: `Runner`, `InMemorySessionService`, `InMemoryArtifactService`.
   - `call_agent` maintains a per-user session and streams events to collect text and function payloads.

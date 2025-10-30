@@ -33,7 +33,7 @@ logger.info("Environment variables loaded")
 
 logger.info("Creating orchestrator-agent")
 ORCHESTRATOR_AGENT = Agent(
-            model="gemini-2.5-flash",
+            model="gemini-2.0-flash-lite",
             name="orchestrator_agent",
             description="A shopping assistant agent",
             instruction=PROMPT,

@@ -7,45 +7,16 @@ import { ProductCard } from "./ProductCard"
 import { useNavigate } from "react-router-dom"
 import { queryAgent } from "../middleware/query"
 import { useChat } from "../context/ChatContext"
+import { motion, AnimatePresence } from "framer-motion"
 
 const products = [
-  {
-    id: 1,
-    image: "https://images.unsplash.com/photo-1720665977720-6a4b93638645?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcm9kdWN0JTIwcGhvdG9ncmFwaHklMjB3YXRjaHxlbnwxfHx8fDE3NjA5Mjg2ODF8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
-    title: "Minimalist Silver Watch",
-    price: "$189",
-  },
-  {
-    id: 2,
-    image: "https://images.unsplash.com/photo-1722891067479-5fd39edbfc3d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxoZWFkcGhvbmVzJTIwd2hpdGUlMjBiYWNrZ3JvdW5kfGVufDF8fHx8MTc2MTAyMTUxNXww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
-    title: "Wireless Headphones",
-    price: "$299",
-  },
-  {
-    id: 3,
-    image: "https://images.unsplash.com/photo-1626104853886-8f06aed1bec5?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzdW5nbGFzc2VzJTIwcHJvZHVjdHxlbnwxfHx8fDE3NjA5NjA3OTh8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
-    title: "Classic Aviator Sunglasses",
-    price: "$159",
-  },
-  {
-    id: 4,
-    image: "https://images.unsplash.com/photo-1579718091289-38794781a3c5?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxiYWNrcGFjayUyMG1pbmltYWxpc3R8ZW58MXx8fHwxNzYxMDIxNTE2fDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
-    title: "Canvas Travel Backpack",
-    price: "$129",
-  },
-  {
-    id: 5,
-    image: "https://images.unsplash.com/photo-1720537262372-57e81c4db13c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjb2ZmZWUlMjBtdWclMjBjZXJhbWljfGVufDF8fHx8MTc2MDkwOTcwN3ww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
-    title: "Ceramic Coffee Mug",
-    price: "$24",
-  },
-  {
-    id: 6,
-    image: "https://images.unsplash.com/photo-1719523677291-a395426c1a87?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxydW5uaW5nJTIwc2hvZXMlMjBwcm9kdWN0fGVufDF8fHx8MTc2MDkzNjA2OHww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
-    title: "Performance Running Shoes",
-    price: "$145",
-  },
-];
+  { id: 1, image: "https://images.unsplash.com/photo-1720665977720-6a4b93638645?auto=format&w=1080&q=80", title: "Minimalist Silver Watch", price: "$189" },
+  { id: 2, image: "https://images.unsplash.com/photo-1722891067479-5fd39edbfc3d?auto=format&w=1080&q=80", title: "Wireless Headphones", price: "$299" },
+  { id: 3, image: "https://images.unsplash.com/photo-1626104853886-8f06aed1bec5?auto=format&w=1080&q=80", title: "Classic Aviator Sunglasses", price: "$159" },
+  { id: 4, image: "https://images.unsplash.com/photo-1579718091289-38794781a3c5?auto=format&w=1080&q=80", title: "Canvas Travel Backpack", price: "$129" },
+  { id: 5, image: "https://images.unsplash.com/photo-1720537262372-57e81c4db13c?auto=format&w=1080&q=80", title: "Ceramic Coffee Mug", price: "$24" },
+  { id: 6, image: "https://images.unsplash.com/photo-1719523677291-a395426c1a87?auto=format&w=1080&q=80", title: "Performance Running Shoes", price: "$145" },
+]
 
 export default function HomePage() {
   const [searchQuery, setSearchQuery] = useState("")
@@ -73,7 +44,7 @@ export default function HomePage() {
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white relative">
       <main className="max-w-7xl mx-auto px-8 py-12">
         <div className="max-w-3xl mx-auto space-y-8">
           <div className="text-center space-y-4">
@@ -91,20 +62,30 @@ export default function HomePage() {
               disabled={loading}
               className="w-full h-14 pl-6 pr-16 rounded-full border-0 bg-white text-gray-800 placeholder:text-gray-400 shadow-[0_4px_20px_rgba(183,177,242,0.15)] focus-visible:ring-0 focus-visible:shadow-[0_4px_24px_rgba(183,177,242,0.3),0_0_0_4px_rgba(183,177,242,0.2)] transition-shadow duration-200 ease-in-out"
             />
+
             <Button
               onClick={handleSearch}
               size="icon"
               disabled={loading}
               className="absolute right-2 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full text-white bg-gradient-to-r from-[#B7B1F2] to-[#FDB7EA] shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200 ease-out"
             >
-              {loading ? (
-                <div className="animate-spin border-2 border-white border-t-transparent rounded-full w-5 h-5" />
-              ) : (
-                <ArrowRight className="w-5 h-5" />
-              )}
+              <ArrowRight className="w-5 h-5" />
             </Button>
-          </div>
 
+            {loading && (
+              <div className="absolute inset-0 flex items-center justify-center rounded-full bg-white/70 backdrop-blur-md overflow-hidden">
+                <div className="relative flex flex-col items-center">
+                  <div className="relative w-8 h-8">
+                    <div className="absolute inset-0 rounded-full border-[3px] border-transparent border-t-[#B7B1F2] border-r-[#FDB7EA] animate-spin"></div>
+                    <div className="absolute inset-1 bg-gradient-to-r from-[#B7B1F2]/20 to-[#FDB7EA]/20 rounded-full blur-sm animate-pulse"></div>
+                  </div>
+                  <p className="mt-2 text-sm font-semibold bg-gradient-to-r from-[#B7B1F2] to-[#FDB7EA] bg-clip-text text-transparent animate-pulse">
+                    Calibrating taste...
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
           <div className="flex items-center justify-center gap-3 flex-wrap">
             <span className="text-gray-500 text-sm">Try:</span>
             {["Vintage leather jacket", "Minimalist desk setup", "Y2K accessories"].map((s) => (
