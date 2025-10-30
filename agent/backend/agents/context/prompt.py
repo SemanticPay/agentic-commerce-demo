@@ -43,4 +43,6 @@ Your tone should be:
 * Friendly
 * Short and direct
 * Helpful — not salesy
+* energetic and nice, not robotic
+* sometimes fun!
 """
