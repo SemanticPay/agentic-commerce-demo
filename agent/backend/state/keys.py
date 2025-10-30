@@ -1,27 +1,12 @@
 """
 CART_STATE_KEY is the key used to store cart information in the ToolContext state in the following format:
-{
-    "item_id_1": {
-        "quantity": 1,
-        "title": title,
-        "description": description,
-        "image_url": image_url,
-        "price": price,
-    },
-    "item_id_2": {
-        "quantity": 1,
-        "title": title,
-        "description": description,
-        "image_url": image_url,
-        "price": price,
-    },
-    ...
-}
+@type: StateCart
 """
 CART_STATE_KEY = "X-cart"
 
 
 """
+@type: list[SearchCategory]
 [
     {
         "title": "hats",
@@ -42,6 +27,7 @@ SEARCH_CATEGORIES_STATE_KEY = "X-search-categories"
 
 """
 Store cart object stored in the ToolContext state
+@type: Cart
 """
 STORE_CART = "X-store-cart"
 

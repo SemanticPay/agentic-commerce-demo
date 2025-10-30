@@ -480,6 +480,13 @@ def test_storefront_client():
     for prod in search_resp.products:
         print(f"{prod.model_dump_json()}")
     print()
+
+
+    logger.info("TEST 1.5: Product Get")
+    print("=== Product Get Test ===")
+    get_resp = client.get_product(GetProductRequest(id=search_resp.products[0].id))
+    print("PRODUCT ===> ", get_resp.product.model_dump_json())
+    print()
     
     # Test 2: Create cart with first available variant
     logger.info("TEST 2: Cart Creation")
@@ -733,4 +740,4 @@ def test_admin_client():
 
 if __name__ == "__main__":
     test_storefront_client()
-    test_admin_client()
+    # test_admin_client()
