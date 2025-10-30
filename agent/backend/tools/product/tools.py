@@ -9,7 +9,6 @@ from agent.backend.client.base_types import GetProductRequest, SearchProductsReq
 from agent.backend.client.factory import get_storefront_client
 from agent.backend.client.interface import StoreFrontClient
 from agent.backend.state import keys
-from agent.backend.tools.context.tools import get_search_categories
 from agent.backend.tools.interface.tools import create_products_widgets
 from agent.backend.types.types import Price, Product, ProductList, ProductSection
 
@@ -30,25 +29,6 @@ storefront_client: StoreFrontClient = get_storefront_client(
     store_url=os.getenv("SHOPIFY_STOREFRONT_STORE_URL", "")
 )
 logger.info("Storefront client initialized successfully")
-
-
-def search_product_categories(tool_context: ToolContext) -> None:
-    categories = get_search_categories(tool_context)
-
-    sections: list[ProductSection] = []
-    for cat in categories:
-        query = cat.query
-        prod_list = search_products(query)
-        sections.append(ProductSection(
-            title=cat.title,
-            description=cat.description,
-            subtitle=cat.subtitle,
-            products=prod_list.products,
-        ))
-
-    logger.info(f"Setting product categories sections in state: {sections}")
-    tool_context.state[keys.PRODUCT_SECTIONS_STATE_KEY] = sections
-
 
 def search_products(query: str) -> ProductList:
     """Search for products in the store catalog.
