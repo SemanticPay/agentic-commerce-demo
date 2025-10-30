@@ -20,10 +20,9 @@ A working **agentic commerce** proof-of-concept — a network of AI agents actin
 
 | Layer | Description |
 |--------|--------------|
-| **🧠 Agent Layer (`agents/`)** | Core reasoning via **Google ADK**. Coordinates discovery, cart, and detail agents. |
-| **⚙️ MCP Tools Layer (`tools/`)** | Deterministic functions implementing **Model Context Protocol** — e.g. `search_products`, `create_cart_widget`. |
-| **🧩 Interface Layer (`client/interface.py`)** | Abstract contract between MCP tools and e-commerce backends using `StoreFrontClient` and `ProductsClient`. |
-| **🛍 Storefront Layer (`client/shopify.py`)** | Shopify GraphQL implementation of `StoreFrontClient`. Executes search, cart, and checkout operations. |
+| 🧠 **Agent Layer** (`agents/`) | Core reasoning built on **Google ADK**. Coordinates discovery, cart, and product detail agents. |
+| ⚙️ **MCP Tools Layer** (`tools/`) | Deterministic functions following the **Model Context Protocol**, e.g. `search_products`, `create_cart_widget`. |
+| 🛍 **Storefront Layer** (`client/shopify.py`) | Implements abstracted interfaces from `client/interface.py`. Executes Shopify GraphQL operations for product search, cart creation, and checkout. |
  
 **Flow Summary**
 1. The **Agent** thinks → decides → calls a tool.  
