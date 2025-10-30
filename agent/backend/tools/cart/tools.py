@@ -34,13 +34,26 @@ logger.info("Storefront client initialized successfully")
 def add_item_to_cart(
     item_id: str,
     quantity: int,
-    tool_context: ToolContext,
+    title: str = "",
+    description: str = "",
+    image_url: str = "",
+    price: float = None,
+    tool_context: ToolContext = None,
 ) -> None:
     if quantity <= 0:
         raise ValueError("Quantity must be greater than zero")
 
     cart = tool_context.state.get(keys.CART_STATE_KEY, {})
-    cart[item_id] = cart.get(item_id, 0) + quantity
+    details = cart.get(item_id, {
+        "quantity": 0,
+        "title": title,
+        "description": description,
+        "image_url": image_url,
+        "price": price,
+    })
+    details["quantity"] = details["quantity"] + quantity
+    cart[item_id] = details
+
     tool_context.state[keys.CART_STATE_KEY] = cart
     logger.info(f"Added item {item_id} (qty: {quantity})")
 
