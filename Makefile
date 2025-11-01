@@ -30,9 +30,4 @@ agent-backend: ## Run the agent backend server
 .PHONY: agent-frontend
 agent-frontend: ## Run the agent frontend server
 	@echo "$(COLOR_BLUE)Starting agent frontend on port $(PORT_FRONTEND)...$(COLOR_RESET)"
-	cd agent/frontend-v2 && npm run dev
-
-.PHONY: agent-frontend-legacy
-agent-frontend-legacy: ## Run the agent frontend server
-	@echo "$(COLOR_BLUE)Starting agent frontend on port $(PORT_FRONTEND)...$(COLOR_RESET)"
 	cd agent/frontend && npm run dev
