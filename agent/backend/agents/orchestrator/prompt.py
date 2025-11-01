@@ -24,7 +24,7 @@ When you're done with the context gathering, use the discovery agent to find pro
 - Starting a new shopping session
 
 **Use discovery_agent** when:
-- User has provided specific search criteria
+- User provides specific search criteria
 - Searching for products that match user requirements
 - User wants to see product options
 - Need to display product widgets to the user

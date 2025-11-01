@@ -1,11 +1,11 @@
 from agent.backend.client.base_types import StoreProvider
 from agent.backend.client.interface import ProductsClient, StoreFrontClient
-from agent.backend.client.shopify import ShopifyGraphQLClient, ShopifyAdminClient
+from agent.backend.client.shopify import ShopifyStoreFrontClient, ShopifyAdminClient
 
 
 def get_storefront_client(provider: StoreProvider, **provider_kwargs) -> StoreFrontClient:
     if provider == StoreProvider.SHOPIFY:
-        return ShopifyGraphQLClient(
+        return ShopifyStoreFrontClient(
             store_url=provider_kwargs.get("store_url", ""),
             access_token=provider_kwargs.get("access_token"),
         )

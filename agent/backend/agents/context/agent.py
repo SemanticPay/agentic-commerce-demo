@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 from google.adk.agents import Agent
 
 from agent.backend.agents.context.prompt import PROMPT
-from agent.backend.tools.context.tools import set_search_categories
+from agent.backend.tools.context.tools import set_search_categories, set_search_query
 
 
 # Configure logging to stdout
@@ -27,6 +27,7 @@ context_agent = Agent(
             description="A shopping context agent",
             instruction=PROMPT,
             tools=[
+                set_search_query,
                 set_search_categories,
             ],
         )
