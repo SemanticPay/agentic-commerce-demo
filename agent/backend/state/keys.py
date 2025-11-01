@@ -26,6 +26,12 @@ CART_STATE_KEY = "X-cart"
 SEARCH_CATEGORIES_STATE_KEY = "X-search-categories"
 
 """
+@type: str
+
+"""
+SEARCH_QUERY_STATE_KEY = "X-search-query"
+
+"""
 Store cart object stored in the ToolContext state
 @type: Cart
 """

@@ -1,18 +1,22 @@
 import logging
 import sys
-from typing import Any
-
 from google.adk.tools import ToolContext
-
 from agent.backend.state import keys
-from agent.backend.types.types import Cart, CartWidget, Product, ProductSection, ProductWidget, StateCart, Widget, WidgetType
+from agent.backend.types.types import (
+    Cart,
+    CartWidget,
+    Product,
+    ProductSection,
+    ProductWidget,
+    StateCart,
+    Widget,
+    WidgetType,
+)
 
-
-# Configure logging to stdout
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[logging.StreamHandler(sys.stdout)]
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[logging.StreamHandler(sys.stdout)],
 )
 logger = logging.getLogger(__name__)
 
@@ -51,24 +55,39 @@ def create_products_section_widget(tool_context: ToolContext) -> Widget:
 def create_products_widgets(raw_prod_list: list[dict], tool_context: ToolContext) -> list[Widget]:
     prod_list = [Product(**prod) for prod in raw_prod_list]
     ws = []
+    product_cards_html = ""
 
     for prod in prod_list:
         logger.debug(f"Creating product widget for: {prod.title}")
-
-        html_string = f"""
-        <div className="product-image-container">
+        card_html = f"""
+        <div class="w-full bg-white rounded-2xl overflow-hidden border border-gray-100 transition-all duration-300 flex flex-col h-full">
             <img 
-                src={prod.image} 
-                alt={prod.title}
-                className="product-image"
+                src="{prod.image}" 
+                alt="{prod.title}" 
+                class="w-full h-48 object-cover flex-shrink-0"
             />
-        </div>
-        <div className="product-details">
-            <h3 className="product-title">{prod.title}</h3>
-            <p className="product-description">{prod.description}</p>
-            <p className="product-price">
-                {formatPrice(prod.price.amount, prod.price.currency_code)}
-            </p>
+            <div class="p-6 flex flex-col flex-grow">
+                <div class="flex-grow mb-4">
+                    <h3 class="text-black mb-2">{prod.title}</h3>
+                    <p class="text-gray-600 text-[14px] leading-relaxed">
+                        {prod.description}
+                    </p>
+                    <p class="text-black font-semibold mt-2">
+                        {formatPrice(prod.price.amount, prod.price.currency_code)}
+                    </p>
+                </div>
+                <div class="flex gap-3">
+                    <button 
+                        class="add-to-cart-btn flex-1 bg-white text-black border border-gray-200 hover:bg-gray-50 hover:shadow-md hover:scale-[1.02] cursor-pointer transition-all duration-200 rounded-xl h-11 flex items-center justify-center"
+                        data-title="{prod.title}"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13l-1.3 5H18a1 1 0 001-1v-1M7 13L5.4 5M16 21a1 1 0 100-2 1 1 0 000 2zm-8 0a1 1 0 100-2 1 1 0 000 2z"/>
+                        </svg>
+                        Add to Cart
+                    </button>
+                </div>
+            </div>
         </div>
         """
 
@@ -82,103 +101,95 @@ def create_products_widgets(raw_prod_list: list[dict], tool_context: ToolContext
                 "currency": prod.price.currency_code,
                 "image": prod.image,
             },
-            raw_html_string=html_string
+            raw_html_string=card_html,
         ))
-        logger.debug(f"Product widget created: {prod.title} - {prod.price.amount} {prod.price.currency_code}")
+        product_cards_html += f"<div class='w-[30%]'>{card_html}</div>\n"
 
-    return ws
+    container_html = f"""
+    <div class="bg-white flex flex-wrap justify-start gap-6 w-full p-8 rounded-3xl">
+        {product_cards_html}
+    </div>
+    """
+
+    return [Widget(
+        type=WidgetType.PRODUCT_SECTIONS,
+        data={"products": [p.model_dump() for p in prod_list]},
+        raw_html_string=container_html,
+    )]
+
 
 def create_cart_widget(tool_context: ToolContext) -> Widget:
     store_cart_data: Cart = tool_context.state.get(keys.STORE_CART, {})
-    store_cart = Cart(**store_cart_data) if store_cart_data else None
+    store_cart = Cart(**store_cart_data) if store_cart_data else None  # type: ignore
     state_cart_data = tool_context.state.get(keys.CART_STATE_KEY, {})
     state_cart: StateCart = StateCart(**state_cart_data) if state_cart_data else StateCart()
 
-    if store_cart is None:
-        logger.info("No store cart found in state; cannot create cart widget")
-        if state_cart is None or len(state_cart.id_to_product.keys()) == 0:
-            logger.error("State cart is also empty; cannot create cart widget")
+    if not store_cart:
+        if not state_cart or not state_cart.id_to_product:
             return Widget(
                 type=WidgetType.CART,
                 data={},
-                raw_html_string="<p>Your cart is empty.</p>"
-            )
-        else:
-            logger.error("State cart has items but no store cart; cannot create cart widget")
-            return Widget(
-                type=WidgetType.CART,
-                data={},
-                raw_html_string="<p>Your cart is empty.</p>"
+                raw_html_string="<p>Your cart is empty.</p>",
             )
 
+    subtotal = store_cart.subtotal_amount  # type: ignore
+    tax = store_cart.tax_amount  # type: ignore
+    total = store_cart.total_amount  # type: ignore
+    checkout_url = store_cart.checkout_url  # type: ignore
 
-    logger.info(f"Creating cart widget from state cart: {store_cart}")
-
-    logger.debug("Creating cart widget")
-    subtotal = store_cart.subtotal_amount
-    tax = store_cart.tax_amount
-    total = store_cart.total_amount
-    
-    logger.debug(f"Cart details - Subtotal: {subtotal.amount} {subtotal.currency_code}, " +
-                f"Tax: {tax.amount if tax else 0} {tax.currency_code if tax else 0}, " +
-                f"Total: {total.amount} {total.currency_code}")
-
-    # TODO: Retrieve line items from store cart instead of using state cart, as these two can be out of sync
     cart_products_html = ""
     for product in state_cart.id_to_product.values():
         cart_products_html += f"""
-        <div class="cart-product-item">
-            <span class="cart-product-title">{product.title}</span>
-            <span class="cart-product-quantity">Qty: {product.quantity}</span>
-            <span class="cart-product-price">
+        <div class="flex justify-between items-center border-b border-gray-100 py-3">
+            <div>
+                <h4 class="text-black text-[15px] font-medium">{product.title}</h4>
+                <p class="text-gray-600 text-[13px]">Qty: {product.quantity}</p>
+            </div>
+            <p class="text-black font-semibold text-[14px]">
                 {formatPrice(product.price.amount * product.quantity, product.price.currency_code)}
-            </span>
+            </p>
         </div>
         """
 
     html_string = f"""
-    <div class="cart-header">
-        <h3>Cart Summary</h3>
-    </div>
-    <div class="cart-details">
-        <div class="cart-products">
+    <div class="bg-white w-full max-w-2xl mx-auto rounded-2xl">
+        <div class="mb-6">
+            <h3 class="text-black text-[22px] font-semibold mb-2">Cart Summary</h3>
+            <p class="text-gray-600 text-[14px]">Review your selected items</p>
+        </div>
+
+        <div class="divide-y divide-gray-100 mb-6">
             {cart_products_html}
         </div>
-        <div class="cart-line-item">
-            <span class="cart-label">Subtotal:</span>
-            <span class="cart-value">
-                {formatPrice(subtotal.amount, subtotal.currency_code)}
-            </span>
+
+        <div class="space-y-2 border-t border-gray-200 pt-4">
+            <div class="flex justify-between text-[14px]">
+                <span class="text-gray-600">Subtotal:</span>
+                <span class="text-black font-medium">{formatPrice(subtotal.amount, subtotal.currency_code)}</span>
+            </div>
+            <div class="flex justify-between text-[14px]">
+                <span class="text-gray-600">Tax:</span>
+                <span class="text-black font-medium">{formatPrice((tax.amount if tax else 0), (tax.currency_code if tax else subtotal.currency_code))}</span>
+            </div>
+            <div class="flex justify-between text-[15px] font-semibold border-t border-gray-300 pt-3">
+                <span>Total:</span>
+                <span>{formatPrice(total.amount, total.currency_code)}</span>
+            </div>
         </div>
-        <div class="cart-line-item">
-            <span class="cart-label">Tax:</span>
-            <span class="cart-value">
-                {formatPrice((tax.amount if tax else 0), (tax.currency_code if tax else subtotal.currency_code))}
-            </span>
+
+        <div class="flex justify-center mt-8">
+            <a href="{checkout_url}" target="_blank" rel="noopener noreferrer"
+                class="bg-black text-white px-8 py-3 rounded-full hover:bg-gray-800 transition-all duration-200">
+                Proceed to Checkout
+            </a>
         </div>
-        <div class="cart-line-item cart-total">
-            <span class="cart-label">Total:</span>
-            <span class="cart-value">
-                {formatPrice(total.amount, total.currency_code)}
-            </span>
-        </div>
-    </div>
-    <div class="cart-actions">
-        <a 
-        href={store_cart.checkout_url} 
-        target="_blank" 
-        rel="noopener noreferrer"
-        class="checkout-button"
-        >
-            Proceed to Checkout
-        </a>
     </div>
     """
-    
-    widget = CartWidget(
+
+    return CartWidget(
         type=WidgetType.CART,
         data={
-            "checkout_url": store_cart.checkout_url,
+            "checkout_url": checkout_url,
             "subtotal_amount": subtotal.amount,
             "subtotal_amount_currency_code": subtotal.currency_code,
             "tax_amount": tax.amount if tax else 0,
@@ -186,14 +197,11 @@ def create_cart_widget(tool_context: ToolContext) -> Widget:
             "total_amount": total.amount,
             "total_amount_currency_code": total.currency_code,
         },
-        raw_html_string=html_string
+        raw_html_string=html_string,
     )
-    logger.debug("Cart widget created successfully")
-    return widget
 
 
 def formatPrice(amount: float, currency_code: str) -> str:
-    """Formats the price based on currency code."""
     if currency_code == "USD":
         return f"${amount:,.2f}"
     elif currency_code == "EUR":

@@ -38,6 +38,9 @@ distill the information into the following format and set in the state using you
     ...
 ]
 
+Also, set a concise search query string using your other tool, summarizing the user's overall intent in a very
+brief and concise manner which is suitable for product search. Very very short, ideally 2-5 words.
+
 Your tone should be:
 
 * Friendly

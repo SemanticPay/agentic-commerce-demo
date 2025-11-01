@@ -4,9 +4,10 @@ from dotenv import load_dotenv
 import requests
 import logging
 import sys
+import re
 from typing import Dict, Any, Optional
 
-from agent.backend.client.base_types import Address, AddressOption, Cart, CartAddressInput, CartCreateRequest, CartCreateResponse, CartGetRequest, CartGetResponse, CartLineInput, GetProductRequest, GetProductResponse, GetProductsRequest, GetProductsResponse, Product, SearchProductsRequest, SearchProductsResponse
+from agent.backend.client.base_types import Cart, CartCreateRequest, CartCreateResponse, CartGetRequest, CartGetResponse, CartLineInput, GetProductRequest, GetProductResponse, GetProductsRequest, GetProductsResponse, Product, SearchProductsRequest, SearchProductsResponse
 from agent.backend.client.interface import ProductsClient, StoreFrontClient
 
 # Configure logging to stdout
@@ -19,9 +20,9 @@ logger = logging.getLogger(__name__)
 
 
 
-class ShopifyGraphQLClient(StoreFrontClient):
+class ShopifyStoreFrontClient(StoreFrontClient):
     def __init__(self, store_url: str, access_token: Optional[str] = None):
-        logger.info("Initializing ShopifyGraphQLClient")
+        logger.info("Initializing ShopifyStoreFrontClient")
         logger.info(f"Store URL: {store_url}")
         logger.info(f"Access token provided: {bool(access_token)}")
         
@@ -35,7 +36,7 @@ class ShopifyGraphQLClient(StoreFrontClient):
             self.headers["X-Shopify-Storefront-Access-Token"] = access_token
             logger.info("Access token added to headers")
         
-        logger.info("ShopifyGraphQLClient initialized successfully")
+        logger.info("ShopifyStoreFrontClient initialized successfully")
     
     def _execute_query(self, query: str, variables: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         logger.debug("Executing GraphQL query")
@@ -78,7 +79,126 @@ class ShopifyGraphQLClient(StoreFrontClient):
         except Exception as e:
             logger.error(f"Error executing GraphQL query: {str(e)}", exc_info=True)
             raise
-    
+
+    def get_products(self, req: GetProductsRequest) -> GetProductsResponse:
+        """
+        Retrieve all published products from Shopify Storefront API with images and detailed logging.
+        """
+        logger.info("=" * 60)
+        logger.info("Starting full product catalog fetch from Shopify Storefront API")
+        logger.info("=" * 60)
+
+        products = []
+        cursor = None
+        page = 1
+
+        query = """
+        query($cursor:String){
+        products(first:250, after:$cursor){
+            edges{
+            cursor
+            node{
+                id
+                handle
+                title
+                description
+                vendor
+                productType
+                tags
+                onlineStoreUrl
+                images(first:5){
+                edges{
+                    node{ url }
+                }
+                }
+                variants(first:20){
+                edges{
+                    node{
+                    id
+                    title
+                    price{amount currencyCode}
+                    }
+                }
+                }
+            }
+            }
+            pageInfo{hasNextPage endCursor}
+        }
+        }
+        """
+
+        try:
+            while True:
+                logger.info(f"Fetching page {page} (cursor: {cursor})")
+                resp = self._execute_query(query, {"cursor": cursor})
+
+                if "errors" in resp:
+                    logger.error(f"GraphQL error(s): {resp['errors']}")
+                    raise RuntimeError(f"GraphQL errors: {resp['errors']}")
+
+                if "products" not in resp:
+                    logger.error(f"Missing 'products' key in response: {json.dumps(resp)[:500]}")
+                    raise RuntimeError("Invalid Shopify response: no products key")
+
+                products_data = resp["products"]
+                edges = products_data.get("edges", [])
+                logger.info(f"Page {page}: {len(edges)} product(s) retrieved")
+
+                for i, edge in enumerate(edges):
+                    node = edge.get("node")
+                    if not node:
+                        logger.warning(f"Edge {i} missing node")
+                        continue
+
+                    # Images
+                    image_edges = node.get("images", {}).get("edges", [])
+                    images = [img["node"]["url"] for img in image_edges if "node" in img and "url" in img["node"]]
+                    node["images"] = images or ["https://via.placeholder.com/300"]
+
+                    # Variants
+                    variant_edges = node.get("variants", {}).get("edges", [])
+                    variants = []
+                    for idx, v in enumerate(variant_edges):
+                        vn = v.get("node", {})
+                        vn.setdefault("id", f"{node['id']}_variant_{idx}")
+                        vn.setdefault("title", "Default Variant")
+                        vn.setdefault("price", {"amount": "0", "currencyCode": "USD"})
+                        variants.append(vn)
+                    node["variants"] = variants
+                    node["price"] = variants[0]["price"] if variants else {"amount": "0", "currencyCode": "USD"}
+
+                    # Fill defaults
+                    node.setdefault("vendor", "Unknown")
+                    node.setdefault("productType", "")
+                    node.setdefault("tags", [])
+                    node.setdefault("description", "")
+                    node.setdefault("onlineStoreUrl", "")
+
+                    try:
+                        product = Product(**node)
+                        products.append(product)
+                        logger.debug(f"Processed product {i + 1}: {product.title}")
+                    except Exception as ex:
+                        logger.error(f"Validation error building Product: {ex}", exc_info=True)
+
+                page_info = products_data.get("pageInfo", {})
+                has_next = page_info.get("hasNextPage")
+                cursor = page_info.get("endCursor")
+
+                logger.info(f"Page {page} processed. hasNextPage={has_next}, endCursor={cursor}")
+                if not has_next:
+                    break
+
+                page += 1
+
+            logger.info(f"Fetch complete. Total products: {len(products)}")
+            logger.info("=" * 60)
+            return GetProductsResponse(products=products)
+
+        except Exception as e:
+            logger.error(f"Failed to fetch all products: {e}", exc_info=True)
+            raise
+        
     def search_products(
         self,
         req: SearchProductsRequest
@@ -128,7 +248,7 @@ class ShopifyGraphQLClient(StoreFrontClient):
         """
 
         variables = {
-            "query": req.query,
+            "query": expand_search_query(req.query),
             "first": min(req.first, 250),  # Shopify limit
             "sortKey": req.sort_key,
             "reverse": req.reverse
@@ -457,80 +577,6 @@ class ShopifyGraphQLClient(StoreFrontClient):
             raise Exception(f"Failed to get product: {str(e)}")
 
 
-def test_storefront_client():
-    """
-    Quick integration test demonstrating client usage.
-    
-    Tests product search, cart creation, and cart retrieval in sequence.
-    Uses the default store configuration for testing purposes.
-    """
-    logger.info("="*60)
-    logger.info("Starting Shopify client integration tests")
-    logger.info("="*60)
-    
-    load_dotenv()
-    client = ShopifyGraphQLClient(store_url=os.getenv("SHOPIFY_STOREFRONT_STORE_URL", ""),)
-    
-    # Test 1: Search for products
-    logger.info("TEST 1: Product Search")
-    print("=== Product Search Test ===")
-    search_resp = client.search_products(SearchProductsRequest(query="bag", first=10))
-    print(f"Found {len(search_resp.products)} products")
-    logger.info(f"Product search test completed: {len(search_resp.products)} products found")
-    for prod in search_resp.products:
-        print(f"{prod.model_dump_json()}")
-    print()
-
-
-    logger.info("TEST 1.5: Product Get")
-    print("=== Product Get Test ===")
-    get_resp = client.get_product(GetProductRequest(id=search_resp.products[0].id))
-    print("PRODUCT ===> ", get_resp.product.model_dump_json())
-    print()
-    
-    # Test 2: Create cart with first available variant
-    logger.info("TEST 2: Cart Creation")
-    print("=== Cart Creation Test ===")
-    lines = []
-    for product in search_resp.products:
-        lines.append(CartLineInput(merchandiseId=product.variants[0].id, quantity=1))
-    
-    logger.info(f"Prepared {len(lines)} line items for cart")
-    
-    if lines:
-        cart_req = CartCreateRequest(lines=lines)
-        cart_resp = client.cart_create(cart_req)
-        
-        if cart_resp.user_errors or cart_resp.warnings:
-            print(f"Errors: {[e.message for e in cart_resp.user_errors]}")
-            print(f"Warnings: {[w.message for w in cart_resp.warnings]}")
-            logger.warning("Cart creation completed with errors or warnings")
-        else:
-            print(f"Cart created: {cart_resp.cart.id}") # type: ignore
-            print(f"Total: ${cart_resp.cart.cost.total_amount.amount}") # type: ignore
-            print("Cart:")
-            print(cart_resp.cart.model_dump_json()) # type: ignore
-            print()
-            logger.info("Cart creation test completed successfully")
-            
-            # Test 3: Retrieve cart
-            logger.info("TEST 3: Cart Retrieval")
-            print("=== Cart Retrieval Test ===")
-            get_resp = client.cart_get(CartGetRequest(id=cart_resp.cart.id)) # type: ignore
-            print(f"Retrieved cart with {get_resp.cart.total_quantity} items")
-            print("Cart:")
-            print(get_resp.cart.model_dump_json())
-            logger.info("Cart retrieval test completed successfully")
-    else:
-        print("No products with variants found for testing")
-        logger.warning("No products with variants available for cart creation test")
-    
-    print("\n=== Tests Complete ===")
-    logger.info("="*60)
-    logger.info("All integration tests completed")
-    logger.info("="*60)
-
-
 class ShopifyAdminClient(ProductsClient):
     def __init__(self, store_url: str, access_token: str):
         self.store_url = store_url
@@ -728,6 +774,22 @@ class ShopifyAdminClient(ProductsClient):
             raise Exception(f"Failed to get products: {str(e)}")
         
 
+def expand_search_query(raw_query: str) -> str:
+    if not raw_query:
+        return raw_query
+    tokens = re.findall(r"\w+", raw_query.lower())
+    expanded = []
+    for t in tokens:
+        if t.endswith("s"):
+            singular = t[:-1]
+            expanded.append(f"{t} OR {singular}")
+        else:
+            plural = f"{t}s"
+            expanded.append(f"{t} OR {plural}")
+    inclusive_query = " OR ".join(expanded)
+    return inclusive_query
+
+    
 def test_admin_client():
     load_dotenv()
     admin_client = ShopifyAdminClient(
@@ -737,6 +799,87 @@ def test_admin_client():
 
     products = admin_client.get_products(GetProductsRequest(num_results=100))
     print(products.model_dump_json(indent=2))
+
+
+def test_storefront_client():
+    """
+    Quick integration test demonstrating client usage.
+    
+    Tests product search, cart creation, and cart retrieval in sequence.
+    Uses the default store configuration for testing purposes.
+    """
+    logger.info("="*60)
+    logger.info("Starting Shopify client integration tests")
+    logger.info("="*60)
+    
+    load_dotenv()
+    client = ShopifyStoreFrontClient(store_url=os.getenv("SHOPIFY_STOREFRONT_STORE_URL", ""),)
+    
+    # Test 1: Search for products
+    logger.info("TEST 1: Product Search")
+    print("=== Product Search Test ===")
+    search_resp = client.search_products(SearchProductsRequest(query="bag", first=10))
+    print(f"Found {len(search_resp.products)} products")
+    logger.info(f"Product search test completed: {len(search_resp.products)} products found")
+    for prod in search_resp.products:
+        print(f"{prod.model_dump_json()}")
+    print()
+
+
+    logger.info("TEST 1.5: Product Get")
+    print("=== Product Get Test ===")
+    get_resp = client.get_product(GetProductRequest(id=search_resp.products[0].id))
+    print("PRODUCT ===> ", get_resp.product.model_dump_json() if get_resp.product else "Not Found")
+    print()
+    
+    # Test 2: Create cart with first available variant
+    logger.info("TEST 2: Cart Creation")
+    print("=== Cart Creation Test ===")
+    lines = []
+    for product in search_resp.products:
+        lines.append(CartLineInput(merchandiseId=product.variants[0].id, quantity=1))
+    
+    logger.info(f"Prepared {len(lines)} line items for cart")
+    
+    if lines:
+        cart_req = CartCreateRequest(lines=lines)
+        cart_resp = client.cart_create(cart_req)
+        
+        if cart_resp.user_errors or cart_resp.warnings:
+            print(f"Errors: {[e.message for e in cart_resp.user_errors]}")
+            print(f"Warnings: {[w.message for w in cart_resp.warnings]}")
+            logger.warning("Cart creation completed with errors or warnings")
+        else:
+            print(f"Cart created: {cart_resp.cart.id}") # type: ignore
+            print(f"Total: ${cart_resp.cart.cost.total_amount.amount}") # type: ignore
+            print("Cart:")
+            print(cart_resp.cart.model_dump_json()) # type: ignore
+            print()
+            logger.info("Cart creation test completed successfully")
+            
+            # Test 3: Retrieve cart
+            logger.info("TEST 3: Cart Retrieval")
+            print("=== Cart Retrieval Test ===")
+            get_resp = client.cart_get(CartGetRequest(id=cart_resp.cart.id)) # type: ignore
+            print(f"Retrieved cart with {get_resp.cart.total_quantity} items")
+            print("Cart:")
+            print(get_resp.cart.model_dump_json())
+            logger.info("Cart retrieval test completed successfully")
+    else:
+        print("No products with variants found for testing")
+        logger.warning("No products with variants available for cart creation test")
+
+    logger.info("TEST 4: Get all products")
+    print("=== Get all products test ===")
+    get_resp = client.get_products(req=GetProductsRequest(num_results=100))
+    print("PRODUCTS ===> ", get_resp.products)
+    print()
+    
+    print("\n=== Tests Complete ===")
+    logger.info("="*60)
+    logger.info("All integration tests completed")
+    logger.info("="*60)
+
 
 if __name__ == "__main__":
     test_storefront_client()

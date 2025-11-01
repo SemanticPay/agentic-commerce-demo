@@ -33,7 +33,6 @@ def set_search_categories(raw_categories: list[dict[str, Any]], tool_context: To
     tool_context.state[keys.SEARCH_CATEGORIES_STATE_KEY] = cats
 
 
-def get_search_categories(tool_context: ToolContext) -> list[SearchCategory]:
-    categories = tool_context.state.get(keys.SEARCH_CATEGORIES_STATE_KEY, [])
-    logger.info(f"Retrieved categories from state: {categories}")
-    return categories
+def set_search_query(query: str, tool_context: ToolContext) -> None:
+    logger.info(f"Setting search query in state: {query}")
+    tool_context.state[keys.SEARCH_QUERY_STATE_KEY] = query

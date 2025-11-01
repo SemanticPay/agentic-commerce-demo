@@ -44,30 +44,6 @@ class CartLineInput(BaseModel):
     merchandise_id: str = Field(alias="merchandiseId")
 
 
-class Address(BaseModel):
-    model_config = ConfigDict(validate_by_name=True, validate_by_alias=True)
-
-    address1: str | None = None
-    address2: str | None = None
-    city: str | None = None
-    country_code: str | None = Field(default=None, alias="countryCode")
-    zip: str | None = None
-    phone: str | None = None
-    first_name: str | None = Field(default=None, alias="firstName")
-    last_name: str | None = Field(default=None, alias="lastName")
-
-
-class CartAddressInput(BaseModel):
-    model_config = ConfigDict(validate_by_name=True, validate_by_alias=True)
-    
-    delivery_address: Address = Field(alias="deliveryAddress")
-
-
-class AddressOption(BaseModel):
-    address: CartAddressInput
-    selected: bool
-
-
 class UserError(BaseModel):
     field: list[str] | None = None
     message: str

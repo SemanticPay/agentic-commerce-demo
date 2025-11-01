@@ -98,19 +98,3 @@ class StateCartProduct(BaseModel):
 class StateCart(BaseModel):
     id_to_product: dict[str, StateCartProduct] = Field(default_factory=dict)
 
-class AddToCartRequest(BaseModel):
-    item_id: str
-    quantity: int = 1
-    session_id: Optional[str] = None
-
-class AddToCartResponse(BaseModel):
-    status: str
-    session_id: Optional[str] = None
-
-class RemoveFromCartRequest(BaseModel):
-    item_id: str
-    session_id: Optional[str] = None
-
-class RemoveFromCartResponse(BaseModel):
-    status: str
-    session_id: Optional[str] = None
