@@ -1,144 +1,137 @@
-# Agentic Commerce MCP Demo
+# ⚡️ Agentic Commerce Demo
 
-An AI-powered shopping assistant demonstrating multi-agent orchestration (Google ADK) integrated with Shopify. The backend returns structured widgets that the frontend renders into a modern shopping experience.
+> LLM-powered shopping orchestration. Real-time discovery, cart creation, and checkout via Shopify.
 
-## Overview
+https://github.com/user-attachments/assets/c48cd6fd-b840-4e6c-bcf2-fdf38d4ac6df
 
-- Multi-agent orchestration with clear division of responsibilities: context gathering, product discovery, cart, and product details.
-- Shopify Storefront/Admin GraphQL integration via typed clients.
-- FastAPI backend exposes a single `POST /query` endpoint returning widgets ready for UI rendering.
-- React (Vite) frontend-v2 provides chat, catalog, product, and cart experiences.
+## 🧠 Overview
 
-## Features
+A working **agentic commerce** proof-of-concept — a network of AI agents acting as autonomous shopping concierges. The backend orchestrates Shopify API calls through structured MCP tools. The frontend renders those results as live, interactive product widgets.
 
-- Orchestrator agent coordinating sub-agents with dedicated prompts
-- Search and product detail retrieval from Shopify
-- In-memory cart management and cart creation via Shopify `cartCreate`
-- Widget-based UI contract: PRODUCT, PRODUCT_SECTIONS, CART
-- Strong logging and explicit error propagation (no silent fallbacks)
+## 🏗 Architecture
 
-## Architecture (High-Level)
+| Layer | Stack | Purpose |
+|-------|--------|----------|
+| **Backend** (`agent/backend/`) | FastAPI + Google ADK | Multi-agent orchestration, tool execution, and full Shopify data pipeline |
+| **Frontend** (`agent/frontend/`) | React + Vite + Tailwind | Chat-driven shopping UI that renders dynamic widgets from backend tools |
+| **Integration** | ADK MCP Tools | Bridges agentic reasoning ↔ structured tool I/O ↔ storefront API |
+ 
+### 🧱 Backend Layer Stack
 
-- FastAPI service → calls Orchestrator Agent (Google ADK) → delegates to sub-agents → tools read/write state and call Shopify → backend serializes tool outputs into `widgets`.
-- Clear separation between platform models (`agent/backend/client/base_types.py`) and UI models (`agent/backend/types/types.py`).
+| Layer | Description |
+|--------|--------------|
+| 🧠 **Agent Layer** (`agents/`) | Core reasoning built on **Google ADK** and **A2A Protocol**. Coordinates discovery, cart, and product detail agents. |
+| ⚙️ **MCP Tools Layer** (`tools/`) | Deterministic functions following the **Model Context Protocol**, e.g. `search_products`, `create_cart_widget`. |
+| 🛍 **Storefront Layer** (`client/shopify.py`) | Implements abstracted interfaces from `client/interface.py`. Executes Shopify GraphQL operations for product search, cart creation, and checkout. |
 
-See `docs/BACKEND_ARCHITECTURE.md` and `docs/PROJECT_OVERVIEW.md` for details.
+**Flow Summary**
+1. The **Agent** thinks → decides → calls a tool.  
+2. The **MCP Tool** executes the business action (like `search_products`).  
+3. The **Interface Layer** standardizes requests/responses using typed base models.  
+4. The **Storefront Client** executes the actual GraphQL query and returns normalized data.
 
-## Prerequisites
+This architecture isolates reasoning, orchestration, and I/O cleanly — allowing you to swap Shopify for any other e-commerce backend without touching agent logic.
 
+![Current Flow](docs/curr-flow.png)
+
+## 🖥 Backend
+
+### Entry Point
+**`agent/backend/main.py`**
+- FastAPI app with CORS.
+- Endpoint: `POST /query`.
+- Input:  
+  ```json
+  { "question": "string", "session_id": "optional" }
+  ```
+- Output:  
+  ```json
+  { "response": "string", "status": "success", "session_id": "...", "widgets": [] }
+  ```
+- Invokes the orchestrator agent → converts tool payloads → `widgets[]`.
+
+### Core Types
+- **`types/types.py`** — shared data models for `Product`, `Cart`, `Widget`.
+- **`state/keys.py`** — registry for agent memory keys (`X-cart`, `X-shopify-cart`, `X-search-categories`, etc.).
+
+### Orchestrator and Agents
+#### 🧠 Root Agent
+Root agent powered by **Gemini 2.0 Flash**, coordinating all sub-agents using `google.adk` primitives:  
+`Runner`, `InMemorySessionService`, and `InMemoryArtifactService`.  
+It maintains per-session chat state and converts tool payloads into UI widgets.
+
+#### 🧭 Discovery Agent
+- **Purpose:** Search for products and build product display widgets.  
+- **Tools Used:**
+  - `search_products(query)` — fetches product data from Shopify.  
+  - `create_products_widgets(raw_prod_list)` — turns structured product data into renderable widgets.
+
+#### 🛒 Cart Agent
+- **Purpose:** Manage the user’s in-memory and Shopify carts.  
+- **Tools Used:**
+  - `add_item_to_cart(product_id, quantity)` — updates local cart state.  
+  - `remove_item_from_cart(product_id)` — removes items.  
+  - `create_shopify_cart_and_get_checkout_url()` — creates live Shopify cart and checkout link.  
+  - `create_cart_widget()` — generates a visual cart summary widget.
+
+#### 📦 Product Details Agent
+- **Purpose:** Retrieve and summarize details for a specific product.  
+- **Tools Used:**
+  - `get_product_details(product_id)` — fetches variant details via Shopify GraphQL.  
+  - `create_products_widgets()` — builds detailed product display widget.
+
+
+> `create_cart_widget` and `create_products_widgets` let **merchants customize UI elements** server-side, enabling **multi-merchant storefronts** with dynamic, brand-specific layouts delivered directly from the merchant backend.
+
+## ⚙️ Setup & Run
+
+**Requirements**
 - Python 3.12+
-- Node.js 18+
-- Shopify Storefront/Admin access (endpoints/tokens)
+- Node 18+
 
-## Setup
-
-1) Python environment and dependencies
-
+**Env**
 ```bash
-# If a venv already exists in ./venv, activate it; otherwise create it
-test -d venv && source venv/bin/activate || (python3 -m venv venv && source venv/bin/activate)
+SHOPIFY_STOREFRONT_STORE_URL=
+SHOPIFY_STOREFRONT_ACCESS_TOKEN=
+SHOPIFY_ADMIN_API_STORE_URL=
+SHOPIFY_ADMIN_API_ACCESS_TOKEN=
+```
+
+**Backend**
+```bash
+python -m venv venv
+source venv/bin/activate
 pip install -r requirements.txt
-```
-
-2) Frontend dependencies (v2)
-
-```bash
-cd agent/frontend-v2
-npm install
-```
-
-3) Configuration
-
-```bash
-cp .env.example .env
-```
-Set the following environment variables as applicable:
-- `SHOPIFY_STOREFRONT_STORE_URL`
-- `SHOPIFY_STOREFRONT_ACCESS_TOKEN` (if required by your store)
-- `SHOPIFY_ADMIN_API_STORE_URL`
-- `SHOPIFY_ADMIN_API_ACCESS_TOKEN`
-
-## Running
-
-1) Backend (FastAPI on :8001)
-
-```bash
 make agent-backend
 ```
 
-2) Frontend (Vite dev server)
-
+**Frontend**
 ```bash
-make agent-frontend
+cd agent/frontend
+npm install
+npm run dev
 ```
 
-## API Reference
+### 🚀 Next Steps
 
-### POST /query
+- **RAG Search Layer** — Replace direct Shopify queries with a retrieval-augmented layer that indexes product embeddings for faster, context-aware search.  
+  - Cache products locally.  
+  - Use semantic retrieval instead of raw GraphQL text search.
 
-Request
-```json
-{
-  "question": "I'm looking for a blue bag",
-  "session_id": "optional-stable-id"
-}
-```
+- **Image Search** — Allow users to upload or paste an image to find visually similar items.  
+  - Extend `search_products` to accept an optional `image_query` field.  
+  - Use CLIP or Gemini Vision for embedding similarity.
 
-Response
-```json
-{
-  "response": "Here are some options!",
-  "status": "success",
-  "session_id": "uuid-or-provided",
-  "widgets": [
-    {
-      "type": "PRODUCT_SECTIONS",
-      "data": { "sections": [/* ... */] },
-      "raw_html_string": "<h2>...</h2>..."
-    },
-    { "type": "PRODUCT", "data": { "id": "...", "title": "..." }, "raw_html_string": "..." },
-    { "type": "CART", "data": { "checkout_url": "..." }, "raw_html_string": "..." }
-  ]
-}
-```
+- **Visualize This Look** — Let users see how cart items look together.  
+  - Add a `visualize_look` tool that composes selected products into one styled image.  
+  - Output as an interactive widget.
 
-Notes
-- `session_id` should be reused for continuity; if omitted, the backend generates one.
-- Widgets map directly to tool outputs; render either by using `raw_html_string` or by mapping `data` to components.
+- **Context Agent** — Add a pre-discovery agent that asks clarifying questions until uncertainty (entropy) drops below a threshold.  
+  - Measures information gain per question.  
+  - Only proceeds to product retrieval when confidence in user intent is high.
 
-## Development
+- **Promos MCP Server** — Introduce a new MCP server for **merchant-driven business rules**.  
+  - Lets merchants dynamically inject promotion logic, preferences, or ranking strategies into the agent flow.  
+  - Controls which items are emphasized or hidden based on business objectives (e.g., margin, stock, campaign priority).
 
-- Logging: Extensive INFO-level logs across agents, tools, and clients.
-- Error handling: HTTP/GraphQL and runtime errors are raised and surfaced; no default/fallback values are injected.
-- Agents: Prompts in `agent/backend/agents/*/prompt.py`; composition in `agents/orchestrator/agent.py`.
-- Tools: Implemented in `agent/backend/tools/*` and operate over a shared ToolContext state (keys in `state/keys.py`).
-
-## Project Structure (Essentials)
-
-```
-agent/backend/
-  main.py                  # FastAPI app and /query endpoint
-  agents/                  # orchestrator + sub-agents (context, discovery, cart, product_details)
-  tools/                   # context/product/interface/cart tools
-  client/                  # Shopify clients (Storefront/Admin) + base types + factory
-  types/                   # UI-facing API/types for widgets and responses
-  state/keys.py            # ToolContext state keys
-agent/frontend-v2/
-  src/App.tsx              # Router (/, /chat, /catalog, /cart, /product/:id)
-  src/components/*         # Pages and UI components
-docs/
-  BACKEND_ARCHITECTURE.md  # Detailed backend architecture
-  PROJECT_OVERVIEW.md      # End-to-end overview
-```
-
-## Documentation
-
-- Backend architecture: `docs/BACKEND_ARCHITECTURE.md`
-- Project overview: `docs/PROJECT_OVERVIEW.md`
-
-## Troubleshooting
-
-- 401/403 from Shopify: verify tokens and store URLs in `.env`.
-- Empty `widgets`: ensure agents/tools are enabled and that queries match product data; check server logs.
-- Timeouts: inspect network connectivity to Shopify GraphQL endpoints; adjust timeouts if needed.
-
+![Final Flow](docs/final-flow.jpeg)
